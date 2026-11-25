@@ -1,19 +1,62 @@
 # QuirkSearch — Project Status
 
-| Phase | Status |
-|---|---|
-| 1. Architecture & planning | ✅ Done |
-| 2. Crawler | ⏳ Next |
-| 3. Indexing | ⬜ |
-| 4. Database | ⬜ |
-| 5. Search & ranking | ⬜ |
-| 6. Backend API | ⬜ |
-| 7. Frontend | ⬜ |
-| 8. Testing | ⬜ |
-| 9. Documentation & report | ⬜ |
+| Phase | Status | Tests |
+|---|---|---|
+| 1. Architecture & planning | ✅ Done | – |
+| 2. Crawler | ✅ Done | 23 |
+| 3. Indexing (text pipeline, inverted index, trie) | ✅ Done | 85 |
+| 4. Database | ✅ Done | 5 |
+| 5. Search & ranking | ✅ Done | 23 |
+| 6. Backend API | ✅ Done | 16 |
+| 7. Frontend | ✅ Done | visual + UI flow |
+| 8. Testing & benchmarks | ⏳ In progress | |
+| 9. Documentation & PDF report | ⬜ | |
 
 ## Phase 1 — Architecture & planning ✅
 - [x] Architecture document with system diagram (`docs/ARCHITECTURE.md`)
-- [x] Folder structure created
-- [x] Python 3.13 virtualenv (`backend/.venv`) with FastAPI, httpx, BeautifulSoup, lxml, pytest
-- [x] Git repository initialised, `.gitignore`
+- [x] Folder structure, virtualenv, Git repository
+
+## Phase 2 — Crawler ✅
+- [x] URL canonicalization (RFC 3986), IDNA hosts, tracking-param removal
+- [x] Async fetcher: connect/read timeouts, redirects, size cap, typed errors (dns/connection/tls/timeout/http_error/…)
+- [x] Per-host rate limiter + robots.txt (RFC 9309) with Crawl-delay
+- [x] BFS crawler: FIFO frontier, visited hash set, SHA-256 content dedupe, N concurrent workers, depth/page limits
+- [x] Bundled QuirkPedia corpus (39 articles + robots-blocked, duplicate, noindex and 404 edge cases)
+- [x] OS certificate store via `truststore` (fixes TLS failures behind custom root CAs)
+- [x] Regression fix: nested boilerplate elements crashed the parser (found on docs.python.org)
+
+## Phase 3 — Indexing ✅
+- [x] Porter stemmer from the 1980 paper (verified vs. NLTK on 1,256 words)
+- [x] Analyzer: NFKC, lowercase, tokenize, stop words, stem; title/heading field weights
+- [x] In-memory inverted index with incremental add/replace/delete
+- [x] Autocomplete trie with heap-based top-k
+
+## Phase 4 — Database ✅
+- [x] 10-table 3NF schema, PK/FK/CHECK constraints, access-path indexes, `WITHOUT ROWID` postings
+- [x] Triggers keep `terms.doc_freq` exact
+- [x] Explicit transactions (one per indexed page), WAL mode, crash recovery of stale jobs
+- [x] Persistence verified across a real server restart (48 docs / 2,401 terms before & after)
+
+## Phase 5 — Search & ranking ✅
+- [x] BM25 (k1=1.2, b=0.75), term-at-a-time accumulation, heap Top-K
+- [x] Operators `+must`, `-exclude`, `site:`; domain facets; per-term score breakdown
+- [x] Snippets (two-pointer best window) with safe highlight segments
+- [x] "Did you mean" (Levenshtein), autocomplete (vocabulary + popular-query tries)
+
+## Phase 6 — Backend API ✅
+- [x] 11 REST endpoints, Pydantic validation, uniform JSON errors, OpenAPI at `/docs`
+- [x] Token-bucket rate limiting (429 + Retry-After), response-time header
+- [x] Background crawl jobs (409 if already running), auto-seed on empty DB
+- [x] Latency optimization: 100–200 ms → 2–20 ms (per-thread connection reuse, snippet pre-filter, bounded snippet scan)
+- [x] Live crawl verified: sqlite.org (8 pages), docs.python.org (24 pages)
+
+## Phase 7 — Frontend ✅
+- [x] React + Vite + Tailwind + Framer Motion + Lucide; light/dark themes (no flash), code-split dashboard
+- [x] Home: logo, expressive type, animated aurora background, autocomplete search, suggested searches, topics, live index stats
+- [x] Results: highlighted titles/snippets, relevance meter, BM25 score, "Why this result?" per-term breakdown, domain facets, relevance threshold, load-more, did-you-mean, skeleton/empty/error states
+- [x] Dashboard: KPI tiles, latency + indexing charts (hover tooltips), crawl outcomes / domains / df bar lists, live crawl control panel, recent searches, jobs, documents
+- [x] Verified with headless Chromium: 15 screenshots (desktop light/dark + mobile), zero console errors, no mobile horizontal overflow; crawl started & completed from the UI
+
+## Known limitations / notes
+- Wikipedia answers 403 to unidentified bots (Wikimedia robot policy); we respect that and do not spoof a browser.
+- Porter does not conflate "trie"/"tries" (→ `trie`/`tri`).

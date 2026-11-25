@@ -314,6 +314,8 @@ class Repository:
             s["search_timeline"] = [dict(r) for r in conn.execute(
                 "SELECT substr(created_at, 1, 13) AS bucket, COUNT(*) AS searches, AVG(latency_ms) AS avg_latency_ms "
                 "FROM search_logs GROUP BY bucket ORDER BY bucket DESC LIMIT 24")][::-1]
+            s["recent_latencies"] = [dict(r) for r in conn.execute(
+                "SELECT id, latency_ms, result_count, created_at FROM search_logs ORDER BY id DESC LIMIT 60")][::-1]
             s["top_queries"] = [dict(r) for r in conn.execute(
                 "SELECT normalized_query AS query, COUNT(*) AS count FROM search_logs "
                 "GROUP BY normalized_query ORDER BY count DESC LIMIT 8")]
