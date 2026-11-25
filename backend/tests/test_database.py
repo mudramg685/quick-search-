@@ -31,7 +31,9 @@ def df_consistent(repo: Repository) -> bool:
 
 @pytest.fixture
 def repo(settings):
-    return Repository(settings.db_path)
+    r = Repository(settings.db_path)
+    yield r
+    r.close()
 
 
 def test_schema_objects_exist(repo):
@@ -114,7 +116,7 @@ def test_crawl_persists_across_restart(site, settings):
     assert reloads  # in-memory index refresh hook fired
 
     # "Restart": a brand-new Repository object on the same database file
-    del repo
+    repo.close()
     repo2 = Repository(settings.db_path)
     index_after, trie_after = repo2.load_index()
     assert index_after.num_docs == index_before.num_docs >= 39
@@ -129,3 +131,4 @@ def test_crawl_persists_across_restart(site, settings):
     CrawlService(repo2, settings, lambda: None).run_blocking([f"{site}/corpus/index.html"], 2, 100)
     assert repo2.load_index()[0].num_docs == index_after.num_docs
     assert df_consistent(repo2)
+    repo2.close()

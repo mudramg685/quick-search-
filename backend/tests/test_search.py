@@ -20,7 +20,8 @@ def engine(site, tmp_path_factory):
                                    per_host_delay=0.0, read_timeout=2.0)
     repo = Repository(settings.db_path)
     CrawlService(repo, settings, lambda: None).run_blocking([f"{site}/corpus/index.html"], 2, 100)
-    return SearchEngine(repo, settings)
+    yield SearchEngine(repo, settings)
+    repo.close()
 
 
 def slug(result: dict) -> str:

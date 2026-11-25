@@ -1,0 +1,160 @@
+{
+  "generated_at": "2026-11-25T16:31:14+00:00",
+  "machine": {
+    "python": "3.13.7",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"
+  },
+  "corpus": {
+    "documents": 72,
+    "terms": 3998,
+    "postings": 16904,
+    "avg_doc_length": 890.0,
+    "vocabulary_words": 5585,
+    "db_size_bytes": 1556480
+  },
+  "index_load": {
+    "n": 5,
+    "mean_ms": 89.958,
+    "p50_ms": 89.507,
+    "p95_ms": 106.114,
+    "p99_ms": 106.114,
+    "min_ms": 80.782,
+    "max_ms": 106.114
+  },
+  "engine_latency": {
+    "n": 800,
+    "mean_ms": 16.072,
+    "p50_ms": 15.94,
+    "p95_ms": 31.648,
+    "p99_ms": 35.055,
+    "min_ms": 0.361,
+    "max_ms": 37.718
+  },
+  "retrieval_latency": {
+    "n": 800,
+    "mean_ms": 0.136,
+    "p50_ms": 0.134,
+    "p95_ms": 0.232,
+    "p99_ms": 0.274,
+    "min_ms": 0.025,
+    "max_ms": 0.363
+  },
+  "queries": {
+    "count": 40,
+    "reps": 20,
+    "avg_hits": 22.6,
+    "zero_hit_queries": 0
+  },
+  "http_latency": {
+    "n": 200,
+    "mean_ms": 35.468,
+    "p50_ms": 35.326,
+    "p95_ms": 52.106,
+    "p99_ms": 56.079,
+    "min_ms": 16.587,
+    "max_ms": 58.011
+  },
+  "index_vs_scan": {
+    "queries": 10,
+    "scan_mean_ms": 125.865,
+    "index_mean_ms": 0.026,
+    "speedup_x": 4839
+  },
+  "heap_vs_sort": [
+    {
+      "n": 1000,
+      "k": 10,
+      "heap_ms": 0.128,
+      "sort_ms": 0.412,
+      "speedup_x": 3.21
+    },
+    {
+      "n": 10000,
+      "k": 10,
+      "heap_ms": 1.949,
+      "sort_ms": 4.775,
+      "speedup_x": 2.45
+    },
+    {
+      "n": 100000,
+      "k": 10,
+      "heap_ms": 12.614,
+      "sort_ms": 55.478,
+      "speedup_x": 4.4
+    },
+    {
+      "n": 1000000,
+      "k": 10,
+      "heap_ms": 164.871,
+      "sort_ms": 933.366,
+      "speedup_x": 5.66
+    }
+  ],
+  "indexing": {
+    "documents": 72,
+    "seconds": 1.097,
+    "docs_per_second": 65.7,
+    "ms_per_doc": 15.23
+  },
+  "crawl_jobs": [
+    {
+      "job": 5,
+      "pages_fetched": 15,
+      "pages_stored": 15,
+      "failed": 0,
+      "seconds": 8.0,
+      "pages_per_second": 1.88
+    },
+    {
+      "job": 4,
+      "pages_fetched": 24,
+      "pages_stored": 24,
+      "failed": 1,
+      "seconds": 14.0,
+      "pages_per_second": 1.71
+    },
+    {
+      "job": 3,
+      "pages_fetched": 8,
+      "pages_stored": 8,
+      "failed": 0,
+      "seconds": 6.0,
+      "pages_per_second": 1.33
+    },
+    {
+      "job": 2,
+      "pages_fetched": 1,
+      "pages_stored": 0,
+      "failed": 1,
+      "seconds": 1.0,
+      "pages_per_second": 1.0
+    },
+    {
+      "job": 1,
+      "pages_fetched": 42,
+      "pages_stored": 40,
+      "failed": 1,
+      "seconds": 23.0,
+      "pages_per_second": 1.83
+    }
+  ],
+  "stats": {
+    "documents": 72,
+    "domains": 3,
+    "terms": 3998,
+    "postings": 16904,
+    "links": 1741,
+    "pages_fetched": 90,
+    "failed_requests": 3,
+    "searches": 246,
+    "crawl_success_rate": 0.967741935483871,
+    "errors_by_type": {
+      "duplicate": 1,
+      "http_error": 1,
+      "internal": 1,
+      "robots": 1,
+      "too_large": 1
+    }
+  }
+}

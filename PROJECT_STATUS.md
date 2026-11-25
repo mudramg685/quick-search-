@@ -9,8 +9,8 @@
 | 5. Search & ranking | ✅ Done | 23 |
 | 6. Backend API | ✅ Done | 16 |
 | 7. Frontend | ✅ Done | visual + UI flow |
-| 8. Testing & benchmarks | ⏳ In progress | |
-| 9. Documentation & PDF report | ⬜ | |
+| 8. Testing & benchmarks | ✅ Done | 152 passed · 94% coverage |
+| 9. Documentation & PDF report | ⏳ In progress | |
 
 ## Phase 1 — Architecture & planning ✅
 - [x] Architecture document with system diagram (`docs/ARCHITECTURE.md`)
@@ -56,6 +56,12 @@
 - [x] Results: highlighted titles/snippets, relevance meter, BM25 score, "Why this result?" per-term breakdown, domain facets, relevance threshold, load-more, did-you-mean, skeleton/empty/error states
 - [x] Dashboard: KPI tiles, latency + indexing charts (hover tooltips), crawl outcomes / domains / df bar lists, live crawl control panel, recent searches, jobs, documents
 - [x] Verified with headless Chromium: 15 screenshots (desktop light/dark + mobile), zero console errors, no mobile horizontal overflow; crawl started & completed from the UI
+
+## Phase 8 — Testing & benchmarks ✅
+- [x] 152 pytest tests pass, 94% statement coverage, no ResourceWarnings
+- [x] `scripts/benchmark.py` → `docs/benchmarks.json` (real measurements on the 72-doc index):
+  retrieval 0.13 ms mean · engine 16 ms mean / 32 ms p95 · HTTP 35 ms mean / 52 ms p95 ·
+  index vs scan ≈4,800× · heap vs sort 5.7× at n=1M · indexing 66 docs/s · crawl 1.3–1.9 pages/s
 
 ## Known limitations / notes
 - Wikipedia answers 403 to unidentified bots (Wikimedia robot policy); we respect that and do not spoof a browser.
