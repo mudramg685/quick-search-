@@ -7,7 +7,7 @@ a **breadth-first traversal** from the seed URLs:
   closest to the seeds are crawled first and ``max_depth`` bounds the traversal.
 * ``visited`` – a hash set of URL fingerprints. A URL is added *when it is enqueued*,
   so each vertex enters the queue at most once (O(1) membership test).
-* ``content_hashes`` – a hash set of SHA-256 digests of page text, detecting the same
+* ``content_hashes`` – a hash map of SHA-256 digests of page text, detecting the same
   content served under different URLs (mirrors, ``?session=`` variants…).
 * ``concurrency`` worker coroutines consume the frontier in parallel. I/O waits (DNS, TCP,
   server think-time) overlap, so throughput scales with workers while the per-host rate
@@ -90,14 +90,15 @@ def now_iso() -> str:
 class Crawler:
     def __init__(self, settings: Settings, config: CrawlConfig, sink: CrawlSink,
                  transport: httpx.AsyncBaseTransport | None = None,
-                 known_content_hashes: set[str] | None = None):
+                 known_content_hashes: dict[str, str] | None = None):
         self.settings = settings
         self.config = config
         self.sink = sink
         self.transport = transport
         self.stats = CrawlStats()
         self.visited: set[str] = set()
-        self.content_hashes: set[str] = set(known_content_hashes or ())
+        # content fingerprint -> URL that first produced it (seeded from the database)
+        self.content_hashes: dict[str, str] = dict(known_content_hashes or {})
         self._reserved = 0  # fetch slots handed out (bounded by max_pages)
         self._stop = asyncio.Event()
 
@@ -186,12 +187,13 @@ class Crawler:
             return
 
         fingerprint = content_fingerprint(parsed)
-        if fingerprint in self.content_hashes:
+        owner = self.content_hashes.get(fingerprint)
+        if owner is not None and owner != final_url:
             self.stats.duplicates += 1
             self.sink.on_error(final_url, depth, "duplicate", result.status_code,
-                               "Duplicate content (identical SHA-256 fingerprint)")
+                               f"Duplicate content of {owner} (identical SHA-256 fingerprint)")
             return
-        self.content_hashes.add(fingerprint)
+        self.content_hashes[fingerprint] = final_url
 
         page = CrawledPage(
             url=url, final_url=final_url, depth=depth, status_code=result.status_code or 200,
