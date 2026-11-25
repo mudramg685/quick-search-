@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS crawl_errors (
     url          TEXT    NOT NULL,
     depth        INTEGER NOT NULL DEFAULT 0 CHECK (depth >= 0),
     error_type   TEXT    NOT NULL CHECK (error_type IN
-                 ('dns', 'connection', 'timeout', 'http_error', 'not_html', 'too_large',
+                 ('dns', 'connection', 'tls', 'timeout', 'http_error', 'not_html', 'too_large',
                   'redirect', 'protocol', 'robots', 'duplicate', 'internal', 'unknown')),
     status_code  INTEGER CHECK (status_code IS NULL OR status_code BETWEEN 100 AND 599),
     message      TEXT    NOT NULL DEFAULT '',

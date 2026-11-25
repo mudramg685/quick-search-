@@ -155,7 +155,7 @@ class Crawler:
                        fetcher: Fetcher, robots: RobotsCache) -> None:
         if self.config.respect_robots and not await robots.allowed(url):
             self.stats.robots_blocked += 1
-            self.sink.on_error(url, depth, "robots", None, "Disallowed by robots.txt")
+            self.sink.on_error(url, depth, "robots", None, robots.reason(url))
             return
 
         # Check-and-reserve with no ``await`` in between ⇒ atomic under asyncio's

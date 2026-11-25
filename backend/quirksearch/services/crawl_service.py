@@ -92,8 +92,12 @@ class CrawlService:
         finally:
             st = crawler.stats
             self.repo.update_job_progress(job_id, st.discovered, st.fetched, st.stored, st.failed)
-            self.repo.finish_job(job_id, status, error)
-            self.on_index_changed()
+            # Reload BEFORE publishing the terminal status: once a client sees "completed",
+            # every page of the job is guaranteed to be searchable.
+            try:
+                self.on_index_changed()
+            finally:
+                self.repo.finish_job(job_id, status, error)
 
     def start(self, seeds: list[str], max_depth: int, max_pages: int, same_domain_only: bool = True) -> int:
         """Start a crawl in the background and return its job id immediately."""

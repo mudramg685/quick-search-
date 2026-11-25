@@ -22,6 +22,7 @@ class RobotsCache:
         self.user_agent = user_agent
         self._parsers: dict[str, RobotFileParser] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        self.failures: dict[str, str] = {}  # origin -> why robots.txt was unreachable
 
     async def _load(self, origin: str) -> RobotFileParser:
         parser = RobotFileParser()
@@ -34,6 +35,7 @@ class RobotsCache:
             parser.allow_all = True
         else:
             parser.disallow_all = True
+            self.failures[origin] = result.error or f"HTTP {result.status_code}"
         parser.modified()  # can_fetch() returns False until a check time is recorded
 
         delay = parser.crawl_delay(self.user_agent)
@@ -50,3 +52,7 @@ class RobotsCache:
                 if origin not in self._parsers:  # double-checked: one fetch per origin
                     self._parsers[origin] = await self._load(origin)
         return self._parsers[origin].can_fetch(self.user_agent, url)
+
+    def reason(self, url: str) -> str:
+        why = self.failures.get(origin_of(url))
+        return f"robots.txt unreachable ({why}) - treated as full disallow (RFC 9309)" if why else "Disallowed by robots.txt"

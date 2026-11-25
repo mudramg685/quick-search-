@@ -18,6 +18,7 @@ What happens on every ``Fetcher.get(url)``:
 from __future__ import annotations
 
 import asyncio
+import ssl
 import time
 from dataclasses import dataclass
 
@@ -25,6 +26,15 @@ import httpx
 
 from ..config import Settings
 from .url_utils import domain_of
+
+try:  # Use the operating system's certificate store (Windows/macOS keychains, Linux CA dir)
+    import truststore
+
+    def _ssl_context() -> ssl.SSLContext | bool:
+        return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+except ImportError:  # fall back to certifi's bundle shipped with httpx
+    def _ssl_context() -> ssl.SSLContext | bool:
+        return True
 
 
 @dataclass
@@ -35,7 +45,7 @@ class FetchResult:
     content_type: str = ""
     body: bytes = b""
     encoding: str | None = None
-    error_type: str | None = None  # dns | connection | timeout | http_error | not_html | too_large | redirect | protocol
+    error_type: str | None = None  # dns | connection | tls | timeout | http_error | not_html | too_large | redirect | protocol
     error: str | None = None
     elapsed_ms: float = 0.0
 
@@ -69,6 +79,8 @@ class HostRateLimiter:
 
 def _classify_connect_error(exc: Exception) -> str:
     msg = str(exc).lower()
+    if "ssl" in msg or "certificate" in msg or "tls" in msg:
+        return "tls"
     dns_markers = ("getaddrinfo", "name or service not known", "nodename nor servname",
                    "no address associated", "temporary failure in name resolution", "11001")
     return "dns" if any(m in msg for m in dns_markers) else "connection"
@@ -97,6 +109,7 @@ class Fetcher:
             max_redirects=s.max_redirects,
             limits=httpx.Limits(max_connections=max(4, s.concurrency * 2), max_keepalive_connections=s.concurrency),
             transport=self._transport,
+            verify=_ssl_context(),
         )
         return self
 

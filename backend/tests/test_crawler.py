@@ -157,3 +157,20 @@ def test_rate_limiter_spaces_requests():
             await limiter.wait("a.test")
         return time.monotonic() - t0
     assert asyncio.run(go()) >= 0.38  # two enforced gaps of 0.2s
+
+
+def test_connect_error_classification():
+    from quirksearch.crawler.fetcher import _classify_connect_error
+    assert _classify_connect_error(Exception("[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed")) == "tls"
+    assert _classify_connect_error(Exception("[Errno 11001] getaddrinfo failed")) == "dns"
+    assert _classify_connect_error(Exception("All connection attempts failed")) == "connection"
+
+
+def test_parse_nested_boilerplate_regression():
+    # Regression: docs.python.org nests role="navigation" elements; decomposing the outer one
+    # used to crash when the inner one was visited afterwards.
+    html = b"""<html><body><div role="navigation"><div role="navigation"><a href="/a">a</a></div>
+    <nav><nav>inner</nav></nav></div><main><p>Real content stays here.</p></main></body></html>"""
+    page = parse_html(html, "http://x.test/")
+    assert page.body_text == "Real content stays here."
+    assert page.links == ["http://x.test/a"]

@@ -86,10 +86,13 @@ def parse_html(body: bytes | str, base_url: str, encoding: str | None = None) ->
                 page.links.append(url)
 
     # --- strip boilerplate, then extract readable content ------------------------------------
+    # find_all() returns nested matches too; once an ancestor is decomposed its descendants
+    # are dead nodes (attrs=None), so skip anything already destroyed.
     for tag in soup.find_all(_BOILERPLATE):
-        tag.decompose()
+        if not tag.decomposed:
+            tag.decompose()
     for tag in soup.find_all(attrs={"role": True}):
-        if str(tag.get("role")).lower() in _BOILERPLATE_ROLES:
+        if not tag.decomposed and tag.attrs is not None and str(tag.get("role")).lower() in _BOILERPLATE_ROLES:
             tag.decompose()
 
     root = soup.find("main") or soup.find("article") or soup.body or soup

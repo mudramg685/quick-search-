@@ -7,6 +7,7 @@ PostgreSQL means re-implementing this one module (placeholders and upsert syntax
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,7 +18,8 @@ from ..index.trie import Trie
 from .database import connect, init_schema, transaction
 
 _CHUNK = 500  # stay well below SQLite's bound-parameter limit
-NETWORK_ERROR_TYPES = ("dns", "connection", "timeout", "http_error", "protocol", "redirect", "too_large", "internal")
+SNIPPET_SCAN_CHARS = 25_000
+NETWORK_ERROR_TYPES = ("dns", "connection", "tls", "timeout", "http_error", "protocol", "redirect", "too_large", "internal")
 
 
 def _chunks(items: list, n: int = _CHUNK) -> Iterable[list]:
@@ -32,16 +34,38 @@ def _row(row: sqlite3.Row | None) -> dict | None:
 class Repository:
     def __init__(self, db_path: Path | str):
         self.db_path = db_path
+        self._local = threading.local()
+        self._all: list[sqlite3.Connection] = []
+        self._all_lock = threading.Lock()
         with self.connect() as conn:
             init_schema(conn)
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
-        conn = connect(self.db_path)
-        try:
-            yield conn
-        finally:
-            conn.close()
+        """Yield this thread's persistent connection (a tiny per-thread connection pool).
+
+        Opening a SQLite connection (file open, WAL shared-memory setup, PRAGMAs) costs
+        milliseconds; a search touches the database twice, so reusing one connection per
+        worker thread removes that cost from every request. Transactions stay explicit
+        (BEGIN … COMMIT/ROLLBACK), so a reused connection never carries an open transaction.
+        """
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = connect(self.db_path)
+            self._local.conn = conn
+            with self._all_lock:
+                self._all.append(conn)
+        yield conn
+
+    def close(self) -> None:
+        with self._all_lock:
+            for conn in self._all:
+                try:
+                    conn.close()
+                except sqlite3.ProgrammingError:
+                    pass
+            self._all.clear()
+        self._local = threading.local()
 
     # =============================================================== crawl jobs
     def create_crawl_job(self, seeds: list[str], max_depth: int, max_pages: int) -> int:
@@ -194,7 +218,9 @@ class Repository:
     def fetch_documents(self, ids: list[int], with_content: bool = True) -> dict[int, dict]:
         cols = "d.id, d.url, d.title, d.description, d.fetched_at, d.doc_length, dom.name AS domain"
         if with_content:
-            cols += ", d.content"
+            # Like Lucene's highlighter (maxAnalyzedChars), snippets only analyse a bounded
+            # prefix of each page; substr() runs inside SQLite so the rest is never copied.
+            cols += f", substr(d.content, 1, {SNIPPET_SCAN_CHARS}) AS content"
         out: dict[int, dict] = {}
         with self.connect() as conn:
             for chunk in _chunks(ids):
