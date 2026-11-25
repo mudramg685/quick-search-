@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>QuirkSearch — Technical Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --ink:#16161a; --ink2:#4a4a52; --ink3:#77777f; --line:#e4e3de; --soft:#f5f4f1; --brand:#6d5dfc; --brand2:#f0609e; --blue:#2a78d6; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: Inter, system-ui, sans-serif; color: var(--ink); font-size: 10.2pt; line-height: 1.55; margin: 0; }
+  h1, h2, h3, h4 { font-family: "Inter Tight", Inter, sans-serif; letter-spacing: -0.015em; line-height: 1.2; }
+  h2 { font-size: 19pt; margin: 0 0 6pt; padding-top: 2pt; }
+  h2 .num { color: var(--brand); margin-right: 8pt; }
+  h3 { font-size: 12.5pt; margin: 16pt 0 4pt; }
+  h4 { font-size: 10.5pt; margin: 10pt 0 2pt; }
+  p { margin: 5pt 0 7pt; }
+  .lead { font-size: 11pt; color: var(--ink2); }
+  section.chapter { break-before: page; }
+  section.flow { margin-top: 22pt; }
+  .avoid { break-inside: avoid; }
+  code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 8.6pt; }
+  code { background: var(--soft); padding: 0.5pt 3pt; border-radius: 3pt; }
+  pre.code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 8pt; line-height: 1.45; background: #101014; color: #e9e8e4; padding: 9pt 11pt; border-radius: 6pt; white-space: pre-wrap; break-inside: avoid; margin: 6pt 0 10pt; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 12pt; font-size: 9pt; break-inside: avoid; }
+  th { text-align: left; font-weight: 600; color: var(--ink2); border-bottom: 1.2pt solid var(--ink); padding: 4pt 6pt; }
+  td { border-bottom: 0.6pt solid var(--line); padding: 3.5pt 6pt; vertical-align: top; }
+  td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  ul, ol { margin: 4pt 0 8pt; padding-left: 15pt; }
+  li { margin: 2pt 0; }
+  .callout { border-left: 3pt solid var(--brand); background: #f6f4ff; padding: 7pt 11pt; border-radius: 0 6pt 6pt 0; margin: 8pt 0 12pt; break-inside: avoid; }
+  .callout.warn { border-color: #d08700; background: #fff8ea; }
+  .figure { margin: 10pt 0 14pt; text-align: center; break-inside: avoid; }
+  .figure .mermaid { display: flex; justify-content: center; }
+  .figure .mermaid svg { width: 100% !important; max-width: 100% !important; height: auto !important; max-height: 200mm; }
+  .figure.short .mermaid svg { max-height: 120mm; }
+  .caption { font-size: 8.6pt; color: var(--ink3); margin-top: 4pt; text-align: center; }
+  .shot { width: 100%; border: 0.75pt solid var(--line); border-radius: 6pt; }
+  .shots2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+  .shots3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; align-items: start; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; margin: 10pt 0 14pt; break-inside: avoid; }
+  .kpi { border: 0.75pt solid var(--line); border-radius: 7pt; padding: 8pt 10pt; }
+  .kpi b { display: block; font-family: "Inter Tight"; font-size: 17pt; letter-spacing: -0.02em; }
+  .kpi span { font-size: 8.2pt; color: var(--ink3); }
+  .eq { font-family: "Instrument Serif", Georgia, serif; font-size: 15pt; text-align: center; margin: 10pt 0 12pt; break-inside: avoid; }
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 4pt; }
+  .frac > span:first-child { border-bottom: 0.9pt solid var(--ink); padding: 0 4pt 1pt; }
+  .frac > span:last-child { padding: 1pt 4pt 0; }
+  .toc { columns: 2; column-gap: 22pt; font-size: 9.8pt; }
+  .toc div { display: flex; gap: 6pt; break-inside: avoid; padding: 1.6pt 0; border-bottom: 0.5pt dotted var(--line); }
+  .toc .n { color: var(--brand); font-weight: 600; width: 16pt; }
+  .tag { display: inline-block; font-size: 7.6pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; padding: 1pt 5pt; border-radius: 3pt; background: var(--soft); color: var(--ink2); margin-right: 3pt; }
+  .bar { height: 6pt; border-radius: 3pt; background: var(--blue); }
+  /* cover */
+  .cover { height: 260mm; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; border-radius: 10pt; padding: 26mm 18mm 16mm;
+    background: radial-gradient(60% 50% at 10% 0%, rgba(109,93,252,.28), transparent 70%), radial-gradient(50% 45% at 100% 20%, rgba(240,96,158,.22), transparent 70%), radial-gradient(50% 40% at 50% 100%, rgba(56,189,248,.14), transparent 70%), #fbfbf9; }
+  .cover .grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(0,0,0,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.045) 1px, transparent 1px); background-size: 32px 32px; -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 75%); }
+  .cover > * { position: relative; }
+  .cover h1 { font-size: 50pt; font-weight: 800; letter-spacing: -0.04em; margin: 16pt 0 0; line-height: 1; }
+  .cover .tagline { font-family: "Instrument Serif", serif; font-style: italic; font-size: 30pt; margin-top: 8pt; color: #6d5dfc; }
+  .cover .sub { font-size: 12.5pt; color: var(--ink2); margin-top: 18pt; max-width: 125mm; }
+  .cover .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; }
+  .cover .meta div { border-top: 1pt solid var(--ink); padding-top: 5pt; font-size: 8.6pt; color: var(--ink2); }
+  .cover .meta b { display: block; font-size: 15pt; font-family: "Inter Tight"; color: var(--ink); }
+  .brandrow { display: flex; align-items: center; gap: 10pt; font-family: "Inter Tight"; font-weight: 800; font-size: 15pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================== COVER -->
+<div class="cover">
+  <div class="grid"></div>
+  <div>
+    <div class="brandrow">
+      <svg width="40" height="40" viewBox="0 0 64 64"><defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d5dfc"/><stop offset="1" stop-color="#f0609e"/></linearGradient></defs><rect width="64" height="64" rx="17" fill="url(#cg)"/><circle cx="29" cy="29" r="13" fill="none" stroke="#fff" stroke-width="5"/><path d="M38.5 38.5 L48 48" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/><path d="M29 22.5 L30.6 27.4 L35.5 29 L30.6 30.6 L29 35.5 L27.4 30.6 L22.5 29 L27.4 27.4 Z" fill="#fff"/></svg>
+      QuirkSearch
+    </div>
+    <h1>QuirkSearch<br>Technical Report</h1>
+    <div class="tagline">Curiosity deserves better results.</div>
+    <p class="sub">Design, implementation and evaluation of a search engine built from scratch: an asynchronous web crawler, a Porter-stemmed inverted index persisted in a relational database, BM25 ranking with heap-based Top-K retrieval, a REST API and a React interface. Computer Networks · DBMS · Data Structures &amp; Algorithms.</p>
+  </div>
+  <div>
+    <div class="meta">
+      <div><b>{{documents}}</b>indexed pages</div>
+      <div><b>{{terms}}</b>unique terms</div>
+      <div><b>{{tests}}</b>automated tests</div>
+      <div><b>{{ret_mean}} ms</b>retrieval + ranking</div>
+    </div>
+    <p style="font-size:8.6pt;color:#77777f;margin-top:14pt">Version 1.0 · {{date}} · All figures in this report were measured on the running system ({{machine}}).</p>
+  </div>
+</div>
+
+<!-- ============================================================== CONTENTS -->
+<section class="chapter">
+  <h2>Contents</h2>
+  <div class="toc">
+    <div><span class="n">1</span>Abstract</div><div><span class="n">2</span>Problem statement</div><div><span class="n">3</span>Project objectives</div>
+    <div><span class="n">4</span>Features and scope</div><div><span class="n">5</span>Technology stack and justification</div><div><span class="n">6</span>System architecture</div>
+    <div><span class="n">7</span>Data-flow diagram</div><div><span class="n">8</span>Web crawler architecture</div><div><span class="n">9</span>Text preprocessing pipeline</div>
+    <div><span class="n">10</span>The inverted index</div><div><span class="n">11</span>Database ER diagram</div><div><span class="n">12</span>Schema and relationships</div>
+    <div><span class="n">13</span>BM25 ranking</div><div><span class="n">14</span>Search query execution</div><div><span class="n">15</span>Top-K retrieval and DSA</div>
+    <div><span class="n">16</span>Computer Networks concepts</div><div><span class="n">17</span>DBMS concepts</div><div><span class="n">18</span>DSA concepts</div>
+    <div><span class="n">19</span>API documentation</div><div><span class="n">20</span>Folder structure</div><div><span class="n">21</span>Screenshots</div>
+    <div><span class="n">22</span>Testing methodology and results</div><div><span class="n">23</span>Performance measurements</div><div><span class="n">24</span>Complexity analysis</div>
+    <div><span class="n">25</span>Limitations</div><div><span class="n">26</span>Future enhancements</div><div><span class="n">27</span>Conclusion</div>
+    <div><span class="n">A</span>Appendix: how to run</div>
+  </div>
+
+  <section class="flow">
+  <h2><span class="num">1</span>Abstract</h2>
+  <p class="lead">QuirkSearch is a complete, self-contained web search engine. It does not call any third-party search API: every stage — fetching pages over HTTP, extracting and normalizing text, building an inverted index, storing it in a relational database, ranking with BM25 and presenting results — is implemented in this project.</p>
+  <p>The crawler performs a polite, concurrent breadth-first traversal of the link graph (robots.txt, per-host rate limiting, timeouts, URL canonicalization and SHA-256 duplicate detection). Pages are tokenized, stop-word filtered and stemmed with a from-scratch implementation of the Porter algorithm, then written — one ACID transaction per page — into a normalized SQLite schema whose document-frequency counters are maintained by triggers. At query time an in-memory hash-map index answers queries by term-at-a-time BM25 accumulation and a bounded min-heap selects the Top-K. The running system indexes <b>{{documents}}</b> pages from <b>{{domains}}</b> domains (<b>{{terms}}</b> terms, <b>{{postings}}</b> postings); retrieval and ranking take <b>{{ret_mean}} ms</b> on average and a complete search request including snippets is served in <b>{{http_p50}} ms</b> (median, HTTP end-to-end). The backend is covered by <b>{{tests}}</b> automated tests with <b>{{coverage}}</b> statement coverage.</p>
+  </section>
+
+  <section class="flow">
+  <h2><span class="num">2</span>Problem statement</h2>
+  <p>Searching a collection of documents by scanning every document for every query costs time proportional to the size of the collection, which quickly becomes unusable. Real search engines solve this with a pipeline of networking, storage and algorithmic techniques — but these are usually hidden behind APIs. The goal of this project is to build that pipeline end-to-end, in a way that is small enough to understand completely yet faithful to how production engines work, and to make each Computer Networks, DBMS and DSA concept visible in working code rather than only in documentation.</p>
+  </section>
+</section>
+
+<section class="chapter">
+  <h2><span class="num">3</span>Project objectives</h2>
+  <ol>
+    <li>Crawl web pages from seed URLs with a custom, polite, fault-tolerant crawler.</li>
+    <li>Extract titles, descriptions, headings, body text and links; clean and normalize the text.</li>
+    <li>Build an inverted index storing term frequencies and document frequencies.</li>
+    <li>Persist documents, the index and operational data in a properly designed relational database.</li>
+    <li>Accept queries, retrieve candidate documents efficiently and rank them with BM25.</li>
+    <li>Return the Top-K results with highlighted, query-dependent snippets.</li>
+    <li>Expose everything through a validated REST API and a polished, responsive web interface.</li>
+    <li>Provide analytics on crawling, indexing and searching, backed by real measurements.</li>
+  </ol>
+
+  <h2 style="margin-top:20pt"><span class="num">4</span>Features and scope</h2>
+  <table>
+    <tr><th style="width:22%">Area</th><th>Implemented features</th></tr>
+    <tr><td>Crawler</td><td>Seed URLs, BFS with depth and page limits, concurrent async workers, robots.txt (RFC 9309) incl. Crawl-delay, per-host rate limiting, connect/read timeouts, redirect handling, size cap, non-HTML filtering, URL canonicalization, visited hash set, SHA-256 content dedupe, <code>noindex</code>/<code>nofollow</code>, domain restriction, typed error logging, cancellation.</td></tr>
+    <tr><td>Text processing</td><td>Unicode NFKC normalization, lowercasing, tokenization, 170+ stop words, Porter stemmer (from the 1980 paper), field weighting (title ×3, headings ×1 extra).</td></tr>
+    <tr><td>Index &amp; storage</td><td>Inverted index (term → postings with tf), document lengths, incremental updates and deletes, 10-table 3NF schema with PK/FK/CHECK constraints, triggers, WAL, transactions, crash recovery, link graph, vocabulary for autocomplete.</td></tr>
+    <tr><td>Search</td><td>BM25 ranking, term-at-a-time scoring, heap Top-K, pagination, operators (<code>+must</code>, <code>-exclude</code>, <code>site:</code>), domain facets, per-term score explanation, best-window snippets with highlighting, “did you mean” (Levenshtein), trie autocomplete over vocabulary and popular queries.</td></tr>
+    <tr><td>API</td><td>11 REST endpoints, Pydantic validation, uniform JSON errors, token-bucket rate limiting (HTTP 429), background crawl jobs, OpenAPI docs, response-time header.</td></tr>
+    <tr><td>Frontend</td><td>Landing page, results page and analytics dashboard; light/dark themes; keyboard-navigable autocomplete; skeleton, empty and error states; mobile layouts; live crawl control.</td></tr>
+  </table>
+  <p><b>Out of scope:</b> JavaScript rendering of pages, phrase/proximity queries (positions are not stored), link-analysis ranking (PageRank) and distributed operation — see §25–26.</p>
+
+  <h2 style="margin-top:20pt"><span class="num">5</span>Technology stack and justification</h2>
+  <table>
+    <tr><th style="width:24%">Layer</th><th style="width:28%">Choice</th><th>Why</th></tr>
+    <tr><td>Language (backend)</td><td>Python 3.13</td><td>Readable algorithms; mature async networking; fast to iterate within a two-day budget.</td></tr>
+    <tr><td>HTTP client</td><td>HTTPX (async) + truststore</td><td>Connection pooling, HTTP/1.1 keep-alive, fine-grained timeouts, streaming bodies; OS certificate store for TLS.</td></tr>
+    <tr><td>HTML parsing</td><td>BeautifulSoup + lxml</td><td>Tolerant of malformed real-world HTML; encoding detection.</td></tr>
+    <tr><td>Web framework</td><td>FastAPI + Uvicorn</td><td>Type-validated REST endpoints, automatic OpenAPI documentation, ASGI performance.</td></tr>
+    <tr><td>Database</td><td>SQLite (WAL) behind a repository layer</td><td>Zero-setup, ACID, real foreign keys, indexes and triggers; all SQL isolated in one module so PostgreSQL can be swapped in.</td></tr>
+    <tr><td>Search core</td><td>Own code (no Lucene/Whoosh/Elastic)</td><td>The point of the project: inverted index, Porter stemmer, BM25, heap and trie are all implemented here.</td></tr>
+    <tr><td>Frontend</td><td>React 18, Vite, Tailwind CSS, Framer Motion, Lucide, Recharts</td><td>Component model, instant dev server, utility-first design tokens, smooth micro-interactions, consistent icons, accessible charts.</td></tr>
+    <tr><td>Testing / tooling</td><td>Pytest, pytest-cov, Playwright, Git</td><td>Unit, integration and API tests over real TCP sockets; real browser screenshots; version control.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================== ARCHITECTURE -->
+<section class="chapter">
+  <h2><span class="num">6</span>Overall system architecture</h2>
+  <p>The system has three tiers. The browser talks JSON over HTTP to a FastAPI server. The server owns a <i>search engine core</i> written in plain Python and a SQLite database. Crawls run on a background thread with their own asyncio event loop, so searches continue to be served while pages are fetched and indexed (SQLite's write-ahead log lets readers proceed during writes). The in-memory index is a cache of the durable postings in SQLite: it is rebuilt at startup and refreshed every 15 indexed pages and at the end of each crawl, then swapped in atomically.</p>
+  <div class="figure">
+<pre class="mermaid">
+flowchart TB
+  subgraph B["Browser — React SPA"]
+    H["Home / search box"]
+    R["Results page"]
+    D["Analytics dashboard"]
+  end
+  subgraph S["FastAPI server"]
+    MW["Middleware: rate limiter,<br/>timing, CORS"]
+    API["REST routes +<br/>Pydantic validation"]
+    CS["Crawl service<br/>(background thread)"]
+    SE["Search engine"]
+  end
+  subgraph C["Engine core (pure Python)"]
+    CR["Async BFS crawler<br/>robots · rate limit · dedupe"]
+    PA["HTML parser"]
+    AN["Analyzer<br/>tokenize · stop · Porter"]
+    IX["Indexer<br/>(1 txn per page)"]
+    MI["In-memory index<br/>hash map + tries"]
+    RK["BM25 + heap Top-K<br/>+ snippets"]
+  end
+  DB[("SQLite (WAL)<br/>10 tables, triggers")]
+  WEB(("Web servers +<br/>bundled corpus"))
+  H & R & D -->|"HTTP/JSON"| MW --> API
+  API --> CS --> CR
+  CR <-->|"HTTP over TCP/TLS"| WEB
+  CR --> PA --> AN --> IX -->|"INSERT/UPDATE"| DB
+  DB -->|"load / reload"| MI
+  API --> SE --> RK --> MI
+  SE -->|"search_logs"| DB
+</pre>
+    <div class="caption">Figure 1 — System architecture.</div>
+  </div>
+  <table>
+    <tr><th>Component</th><th>Responsibility</th></tr>
+    <tr><td><code>crawler/*</code></td><td>Networking: URL canonicalization, robots.txt, async fetching with timeouts and rate limits, HTML extraction, BFS traversal.</td></tr>
+    <tr><td><code>text/*</code></td><td>Analyzer shared by indexing and querying; Porter stemmer; stop words.</td></tr>
+    <tr><td><code>index/*</code></td><td>Indexer (transactional writes), in-memory inverted index, autocomplete trie.</td></tr>
+    <tr><td><code>search/*</code></td><td>BM25 maths, query parsing and execution, snippets and highlighting.</td></tr>
+    <tr><td><code>db/*</code></td><td>Schema DDL, connection/transaction management, repository with every SQL statement.</td></tr>
+    <tr><td><code>services/*</code>, <code>api/*</code>, <code>main.py</code></td><td>Crawl-job orchestration, REST endpoints, rate limiter, application wiring.</td></tr>
+  </table>
+</section>
+
+<section class="chapter">
+  <h2><span class="num">7</span>Complete data-flow diagram</h2>
+  <p>The level-1 data-flow diagram shows the two main flows: the <b>indexing flow</b> (top) that turns web pages into postings, and the <b>query flow</b> (bottom) that turns a user's question into ranked results. Data stores are shown as cylinders.</p>
+  <div class="figure" style="break-before:avoid">
+<pre class="mermaid">
+flowchart TB
+  U(["User"]) -->|"seed URLs, depth, page limit"| P1["1.0 Manage crawl job"]
+  P1 -->|"job row"| DS1[("crawl_jobs / seeds")]
+  P1 -->|"frontier URLs"| P2["2.0 Fetch page<br/>DNS → TCP → TLS → HTTP GET"]
+  W(("Web server")) -->|"HTML bytes, status"| P2
+  P2 -->|"errors"| DS2[("crawl_errors")]
+  P2 -->|"HTML"| P3["3.0 Parse & extract<br/>title, text, links"]
+  P3 -->|"new links"| P1
+  P3 -->|"clean text"| P4["4.0 Analyze<br/>tokens → stems"]
+  P4 -->|"tf per term, |d|"| P5["5.0 Index (transaction)"]
+  P5 --> DS3[("documents / domains / links")]
+  P5 --> DS4[("terms / postings / vocabulary")]
+  DS4 -->|"load"| DS5[("in-memory index + tries")]
+  U -->|"query text"| P6["6.0 Parse query<br/>(same analyzer)"]
+  P6 -->|"terms"| P7["7.0 Score BM25 +<br/>heap Top-K"]
+  DS5 -->|"postings, df, |d|"| P7
+  P7 -->|"top doc ids"| P8["8.0 Build snippets"]
+  DS3 -->|"titles, content"| P8
+  P8 -->|"ranked results JSON"| U
+  P7 -->|"latency, hit count"| DS6[("search_logs")]
+  DS6 & DS1 & DS2 -->|"aggregates"| P9["9.0 Analytics"]
+  P9 -->|"dashboard JSON"| U
+</pre>
+    <div class="caption">Figure 2 — Level-1 data-flow diagram.</div>
+  </div>
+</section>
+
+<!-- ============================================================== CRAWLER -->
+<section class="chapter">
+  <h2><span class="num">8</span>Web crawler architecture and working</h2>
+  <p>The web is a directed graph whose vertices are pages and whose edges are hyperlinks. The crawler explores it <b>breadth-first</b> from the seed URLs: a FIFO <code>asyncio.Queue</code> is the frontier, so all pages at distance <i>d</i> from a seed are visited before those at distance <i>d+1</i>, and <code>max_depth</code> bounds the traversal. N worker coroutines (default 4) consume the queue concurrently; because almost all time is spent waiting on the network, concurrency overlaps those waits.</p>
+  <div class="figure">
+<pre class="mermaid">
+flowchart TD
+  A["Seeds → canonicalize → enqueue (depth 0)<br/>add url-hash to visited set"] --> B{"Queue empty?"}
+  B -- yes --> Z["Job completed:<br/>reload index, mark job"]
+  B -- no --> C["Worker dequeues (url, depth)"]
+  C --> D{"budget left &<br/>not cancelled?"}
+  D -- no --> B
+  D -- yes --> E{"robots.txt<br/>allows URL?"}
+  E -- no --> E1["log error 'robots'"] --> B
+  E -- yes --> F["Per-host rate limiter<br/>(≥0.5 s or Crawl-delay)"]
+  F --> G["HTTP GET with connect/read<br/>timeouts, ≤5 redirects, 2 MB cap"]
+  G --> H{"2xx HTML?"}
+  H -- no --> H1["log dns / connection / tls /<br/>timeout / http_error / not_html"] --> B
+  H -- yes --> I["Parse HTML: title, description,<br/>headings, text, links"]
+  I --> J{"depth < max_depth?"}
+  J -- yes --> K["for each in-domain link:<br/>canonicalize; if hash ∉ visited<br/>→ add & enqueue (depth+1)"]
+  J -- no --> L
+  K --> L{"noindex?"}
+  L -- yes --> B
+  L -- no --> M{"SHA-256 of text seen<br/>for another URL?"}
+  M -- yes --> M1["log 'duplicate'"] --> B
+  M -- no --> N["Indexer: analyze + write<br/>in one transaction"] --> B
+</pre>
+    <div class="caption">Figure 3 — Crawler workflow (each worker runs this loop).</div>
+  </div>
+  <h3>Key mechanisms</h3>
+  <ul>
+    <li><b>URL canonicalization (RFC 3986 §6).</b> Relative links are resolved against the page (or <code>&lt;base href&gt;</code>); scheme and host are lowercased; internationalized host names are IDNA-encoded (the form DNS uses); default ports are dropped; dot-segments are removed; percent-encoding is normalized; query parameters are sorted and tracking parameters (<code>utm_*</code>, <code>fbclid</code>…) removed; fragments are dropped because they never reach the server. Example: <code>HTTP://Example.COM:80/a/./b/../c#top</code> → <code>http://example.com/a/c</code>.</li>
+    <li><b>Visited set.</b> The SHA-1 hash of each canonical URL is inserted into a Python <code>set</code> when the URL is <i>enqueued</i>, so every vertex enters the frontier at most once — O(1) average membership tests and O(V+E) total work.</li>
+    <li><b>Politeness.</b> robots.txt is fetched once per origin and cached; 4xx means “allow all”, 5xx/unreachable means “disallow all” (RFC 9309). A per-host lock and timestamp enforce at least 0.5 s between requests to one host (or the site's <code>Crawl-delay</code>, capped at 5 s). Crawls are restricted to the seeds' domains by default.</li>
+    <li><b>Robustness.</b> Every failure mode is classified and stored in <code>crawl_errors</code>; a single bad page can never stop a worker. A page budget is reserved atomically (no <code>await</code> between check and increment) so concurrent workers never exceed <code>max_pages</code>.</li>
+    <li><b>Duplicate content.</b> The SHA-256 fingerprint of the normalized text is compared with fingerprints already in the database, detecting mirrors served under different URLs.</li>
+  </ul>
+  <div class="callout">The bundled <b>QuirkPedia</b> corpus (39 linked articles) is served by the backend itself at <code>/corpus</code> and crawled over real HTTP, so the engine works offline. It deliberately contains a robots-blocked page, an exact duplicate, a <code>noindex</code> draft and a broken link; the first crawl correctly produced exactly one error of each kind (§22).</div>
+</section>
+
+<!-- ============================================================== TEXT -->
+<section class="chapter">
+  <h2><span class="num">9</span>Text preprocessing pipeline</h2>
+  <p>The same analyzer runs at indexing time and at query time; otherwise the query “Connecting Databases” could never match a page that says “connected database”.</p>
+  <div class="figure">
+<pre class="mermaid">
+flowchart LR
+  A["Raw HTML"] --> B["Remove boilerplate<br/>script, style, nav,<br/>header, footer, aside"]
+  B --> C["Extract text<br/>title · headings · body"]
+  C --> D["NFKC normalize<br/>+ lowercase"]
+  D --> E["Strip apostrophes<br/>tokenize [^\W_]+"]
+  E --> F["Drop stop words &<br/>tokens &lt;2 or &gt;40 chars"]
+  F --> G["Porter stem<br/>(LRU-cached)"]
+  G --> H["Field-weighted tf<br/>title ×3, headings +1"]
+  H --> I["Postings + |d|"]
+</pre>
+    <div class="caption">Figure 4 — Indexing pipeline from HTML to postings.</div>
+  </div>
+  <table>
+    <tr><th>Stage</th><th>Input</th><th>Output</th></tr>
+    <tr><td>Normalize + tokenize</td><td><code>"The Databases are CONNECTED to networks via HTTP/1.1"</code></td><td><code>the databases are connected to networks via http 1 1</code></td></tr>
+    <tr><td>Stop words / length</td><td>(above)</td><td><code>databases connected networks http</code></td></tr>
+    <tr><td>Porter stemming</td><td>(above)</td><td><code>databas connect network http</code></td></tr>
+  </table>
+  <h3>The Porter stemmer</h3>
+  <p>Implemented from M. F. Porter, “An algorithm for suffix stripping” (1980). A word is viewed as <i>[C](VC)<sup>m</sup>[V]</i>, where <i>m</i> (the measure) counts vowel–consonant sequences. Five ordered steps apply suffix rules guarded by conditions on <i>m</i>, e.g. <i>(m&gt;0) ATIONAL → ATE</i> turns <i>relational</i> into <i>relate</i>, and step 1 handles plurals and <i>-ed/-ing</i> (<i>caresses → caress, ponies → poni, motoring → motor, hopping → hop</i>). The implementation passes 82 of Porter's published examples and agrees with NLTK's reference implementation on every word of the corpus except three words of 1–2 letters, which Porter's own C code intentionally leaves unchanged.</p>
+</section>
+
+<!-- ============================================================== INVERTED INDEX -->
+<section class="chapter">
+  <h2><span class="num">10</span>The inverted index</h2>
+  <p>A <i>forward index</i> lists the terms of each document. An <b>inverted index</b> flips it: for every term it stores a <b>postings list</b> — the documents containing that term together with the term frequency (tf). The <b>document frequency</b> df(t) is the length of that postings list.</p>
+  <h3>Worked example</h3>
+  <table style="width:70%">
+    <tr><th>Document</th><th>Text</th><th>Terms after analysis</th></tr>
+    <tr><td>d1</td><td>“Database index”</td><td>databas, index</td></tr>
+    <tr><td>d2</td><td>“Network protocol”</td><td>network, protocol</td></tr>
+    <tr><td>d3</td><td>“Database networks, network!”</td><td>databas, network, network</td></tr>
+  </table>
+  <pre class="code">postings = {                         # hash map: term → {doc_id: tf}
+  "databas":  {d1: 1, d3: 1},        # df = 2
+  "index":    {d1: 1},               # df = 1
+  "network":  {d2: 1, d3: 2},        # df = 2
+  "protocol": {d2: 1},               # df = 1
+}
+doc_len = {d1: 2, d2: 2, d3: 3}      # |d| for BM25 length normalization</pre>
+  <h3>Why it is faster than scanning</h3>
+  <p>A scan must tokenize and examine all N documents for every query: O(total text). With the index, a query for <i>network</i> performs one O(1) hash lookup and reads df(network) postings. The cost of a query is O(Σ df(t<sub>i</sub>)) — only documents that contain a query term are ever touched. Measured on this system, a lookup takes <b>{{idx_ms}} ms</b> versus <b>{{scan_ms}} ms</b> for re-scanning the documents, a factor of about <b>{{speedup}}×</b> (§23).</p>
+  <h3>How document frequencies are calculated</h3>
+  <p>In memory, df(t) is literally <code>len(postings[t])</code>, so it can never drift from the postings. In the database it is cached in <code>terms.doc_freq</code> for O(1) IDF lookups, and two triggers keep it exact: <code>AFTER INSERT ON postings</code> increments it, <code>AFTER DELETE ON postings</code> decrements it — whichever code path (explicit delete or <code>ON DELETE CASCADE</code>) modifies postings. A test asserts after every operation that <code>doc_freq</code> equals <code>COUNT(*)</code> of postings for every term.</p>
+  <h3>How the index is updated</h3>
+  <ul>
+    <li><b>New page:</b> insert the document row, insert one posting per distinct term (triggers increment df), upsert vocabulary words, replace outgoing links — all in one transaction.</li>
+    <li><b>Re-crawled page:</b> in the same transaction, delete its old postings (triggers decrement df), garbage-collect terms whose df reached 0, update the row, insert new postings. The document id is stable, so the update is incremental — no global rebuild.</li>
+    <li><b>In memory:</b> the crawl service rebuilds the hash-map index from SQLite every 15 pages and at job end ({{load_ms}} ms for the current index) and swaps the reference atomically; queries in flight keep using the previous snapshot.</li>
+  </ul>
+</section>
+
+<!-- ============================================================== DATABASE -->
+<section class="chapter">
+  <h2><span class="num">11</span>Database ER diagram</h2>
+  <div class="figure">
+<pre class="mermaid">
+erDiagram
+  CRAWL_JOBS ||--|{ CRAWL_JOB_SEEDS : "seeded by"
+  CRAWL_JOBS ||--o{ CRAWL_ERRORS : "records"
+  CRAWL_JOBS |o--o{ DOCUMENTS : "produced"
+  DOMAINS ||--o{ DOCUMENTS : "hosts"
+  DOCUMENTS ||--o{ POSTINGS : "contains"
+  TERMS ||--o{ POSTINGS : "occurs in"
+  TERMS ||--o{ VOCABULARY : "surface forms"
+  DOCUMENTS ||--o{ LINKS : "links out"
+  CRAWL_JOBS {
+    INTEGER id PK
+    TEXT status "CHECK enum"
+    INTEGER max_depth "CHECK 0..10"
+    INTEGER max_pages "CHECK 1..5000"
+    INTEGER pages_fetched
+    TEXT started_at
+    TEXT finished_at
+  }
+  CRAWL_JOB_SEEDS {
+    INTEGER job_id PK, FK
+    TEXT url PK
+  }
+  CRAWL_ERRORS {
+    INTEGER id PK
+    INTEGER job_id FK
+    TEXT url
+    TEXT error_type "CHECK enum"
+    INTEGER status_code
+  }
+  DOMAINS {
+    INTEGER id PK
+    TEXT name UK
+  }
+  DOCUMENTS {
+    INTEGER id PK
+    TEXT url UK
+    TEXT url_hash UK "SHA-1"
+    INTEGER domain_id FK
+    INTEGER crawl_job_id FK
+    TEXT title
+    TEXT content
+    TEXT content_hash "SHA-256"
+    INTEGER doc_length "CHECK > 0"
+  }
+  TERMS {
+    INTEGER id PK
+    TEXT term UK
+    INTEGER doc_freq "trigger-maintained"
+  }
+  POSTINGS {
+    INTEGER term_id PK, FK
+    INTEGER doc_id PK, FK
+    INTEGER term_freq "CHECK > 0"
+  }
+  VOCABULARY {
+    TEXT word PK
+    INTEGER term_id FK
+    INTEGER frequency
+  }
+  LINKS {
+    INTEGER source_doc_id PK, FK
+    TEXT target_url PK
+  }
+  SEARCH_LOGS {
+    INTEGER id PK
+    TEXT query
+    INTEGER result_count
+    REAL latency_ms
+    TEXT created_at
+  }
+</pre>
+    <div class="caption">Figure 5 — Entity-relationship diagram (crow's-foot notation). SEARCH_LOGS is independent.</div>
+  </div>
+</section>
+
+<section class="chapter">
+  <h2><span class="num">12</span>Database schema and relationships</h2>
+  <table>
+    <tr><th>Table</th><th>Primary key</th><th>Foreign keys / constraints</th><th>Indexes (access path served)</th></tr>
+    <tr><td>crawl_jobs</td><td>id</td><td>CHECK status ∈ {queued, running, completed, failed, cancelled}; CHECK ranges; CHECK finished ⇒ started</td><td>status (find running jobs)</td></tr>
+    <tr><td>crawl_job_seeds</td><td>(job_id, url)</td><td>job_id → crawl_jobs ON DELETE CASCADE</td><td>clustered PK</td></tr>
+    <tr><td>crawl_errors</td><td>id</td><td>job_id → crawl_jobs CASCADE; CHECK error_type enum; CHECK status 100–599</td><td>job_id, error_type (dashboard)</td></tr>
+    <tr><td>domains</td><td>id</td><td>UNIQUE name</td><td>unique index</td></tr>
+    <tr><td>documents</td><td>id</td><td>domain_id → domains; crawl_job_id → crawl_jobs ON DELETE SET NULL; UNIQUE url, url_hash; CHECK hash lengths, doc_length &gt; 0</td><td>domain_id (site filter), content_hash (dedupe), crawl_job_id, indexed_at (recent docs)</td></tr>
+    <tr><td>terms</td><td>id</td><td>UNIQUE term; CHECK doc_freq ≥ 0</td><td>unique index (term → id)</td></tr>
+    <tr><td>postings</td><td>(term_id, doc_id)</td><td>both FKs ON DELETE CASCADE; CHECK term_freq &gt; 0; <code>WITHOUT ROWID</code></td><td>clustered PK = postings list is one contiguous B-tree range; secondary (doc_id) for re-index/delete</td></tr>
+    <tr><td>vocabulary</td><td>word</td><td>term_id → terms CASCADE</td><td>clustered PK (prefix scans)</td></tr>
+    <tr><td>links</td><td>(source_doc_id, target_url)</td><td>source → documents CASCADE</td><td>clustered PK</td></tr>
+    <tr><td>search_logs</td><td>id</td><td>CHECK query length 1–256, latency ≥ 0</td><td>created_at (timelines), normalized_query (popular queries)</td></tr>
+  </table>
+  <h3>Normalization</h3>
+  <p>The schema is in third normal form: atomic columns (1NF); no partial dependencies on composite keys — e.g. <code>postings</code> holds only <code>term_freq</code>, which depends on the whole (term, document) key (2NF); and no transitive dependencies — the domain name is not repeated in every document row but stored once in <code>domains</code>, and seed URLs live in <code>crawl_job_seeds</code> instead of a delimited string (3NF). The only deliberate denormalization is <code>terms.doc_freq</code>, a derivable aggregate cached for performance and kept consistent by triggers.</p>
+  <h3>Transactions and durability</h3>
+  <p>Connections run in autocommit mode and transactions are explicit: <code>BEGIN IMMEDIATE … COMMIT</code>, with <code>ROLLBACK</code> on any exception. Each page is indexed atomically, so a crash can never leave a half-indexed document — a test raises an exception mid-transaction and verifies nothing was written. WAL journaling lets readers proceed during writes; <code>synchronous=NORMAL</code> is durable at checkpoints. At startup, jobs still marked running are recovered as failed. Persistence was verified on the real server: {{persist_docs}} documents and {{persist_terms}} terms before a restart and the same counts after it.</p>
+</section>
+
+<!-- ============================================================== BM25 -->
+<section class="chapter">
+  <h2><span class="num">13</span>BM25 ranking</h2>
+  <p>QuirkSearch ranks with Okapi BM25, the default similarity of Lucene and Elasticsearch. For a query Q with terms q<sub>1</sub>…q<sub>n</sub> and a document D:</p>
+  <div class="eq">score(D,Q) = Σ<sub>i</sub> IDF(q<sub>i</sub>) ·
+    <span class="frac"><span>tf(q<sub>i</sub>,D) · (k<sub>1</sub> + 1)</span><span>tf(q<sub>i</sub>,D) + k<sub>1</sub> · (1 − b + b · |D| / avgdl)</span></span></div>
+  <div class="eq">IDF(q) = ln ( 1 +
+    <span class="frac"><span>N − df(q) + 0.5</span><span>df(q) + 0.5</span></span> )</div>
+  <table>
+    <tr><th>Symbol</th><th>Meaning</th><th>Value here</th></tr>
+    <tr><td>N</td><td>number of indexed documents</td><td class="r">{{documents}}</td></tr>
+    <tr><td>df(q)</td><td>documents containing q (postings-list length)</td><td class="r">per term</td></tr>
+    <tr><td>tf(q,D)</td><td>field-weighted frequency of q in D (title ×3)</td><td class="r">per posting</td></tr>
+    <tr><td>|D|, avgdl</td><td>document length and average length in tokens</td><td class="r">avgdl = {{avgdl}}</td></tr>
+    <tr><td>k<sub>1</sub></td><td>term-frequency saturation</td><td class="r">1.2</td></tr>
+    <tr><td>b</td><td>length-normalization strength</td><td class="r">0.75</td></tr>
+  </table>
+  <h3>Mathematical intuition</h3>
+  <ul>
+    <li><b>IDF rewards rare terms.</b> A term in few documents discriminates well; “bm25” carries far more information than “data”. The “1 +” inside the logarithm (Lucene's variant) keeps IDF positive even for terms in more than half the documents.</li>
+    <li><b>Saturating tf.</b> As tf → ∞ the fraction approaches k<sub>1</sub>+1 = 2.2: the first occurrence matters most and keyword stuffing has bounded benefit — unlike TF-IDF, where score grows linearly with tf.</li>
+    <li><b>Length normalization.</b> The denominator grows with |D|/avgdl, so a long page that mentions a term once in passing does not beat a short, focused page. b=0 disables this; b=1 normalizes fully.</li>
+  </ul>
+  <p>These properties are verified by unit tests (monotonic IDF, bounded and diminishing tf contribution, shorter-document preference). Each result in the UI exposes its per-term contributions (“Why this result?”), and a test checks that they sum to the total score.</p>
+  <h3>Worked example from the live index</h3>
+  <p>{{bm25_example}}</p>
+</section>
+
+<!-- ============================================================== QUERY FLOW -->
+<section class="chapter">
+  <h2><span class="num">14</span>Search query execution flowchart</h2>
+  <div class="figure">
+<pre class="mermaid">
+flowchart TD
+  A["GET /api/search?q=…&page=…&domain=…"] --> B["Token bucket: allow?"]
+  B -- no --> B1["429 Too Many Requests<br/>+ Retry-After"]
+  B -- yes --> C["Pydantic validation<br/>(1–256 chars, page, size)"]
+  C -- invalid --> C1["422 with field errors"]
+  C -- ok --> D["Parse query: site:, +must, -exclude;<br/>analyze → stemmed terms"]
+  D --> E["Snapshot = current in-memory index"]
+  E --> F["For each term: IDF from df;<br/>walk postings, add BM25 to<br/>score accumulator (hash map)"]
+  F --> G["Apply +/- constraints;<br/>count domain facets; domain filter"]
+  G --> H["heapq.nlargest(page × size)<br/>→ slice requested page"]
+  H --> I["Fetch titles + bounded content<br/>for page docs (1 SQL query)"]
+  I --> J["Best-window snippet +<br/>highlight segments"]
+  J --> K{"0 results?"}
+  K -- yes --> K1["Levenshtein spelling<br/>suggestion"]
+  K -- no --> L
+  K1 --> L["Log query + latency<br/>to search_logs"]
+  L --> M["JSON response"]
+</pre>
+    <div class="caption">Figure 6 — Search query execution.</div>
+  </div>
+  <div class="figure">
+<pre class="mermaid">
+sequenceDiagram
+  participant B as Browser
+  participant V as FastAPI
+  participant S as SearchEngine
+  participant M as In-memory index
+  participant DB as SQLite
+  B->>V: GET /api/search?q=write ahead log (HTTP/1.1, keep-alive)
+  V->>V: rate limit + validate
+  V->>S: search("write ahead log")
+  S->>M: postings(writ), postings(ahead), postings(log)
+  M-->>S: {doc: tf} maps, df, |d|
+  S->>S: BM25 accumulate, heap Top-10
+  S->>DB: SELECT title, substr(content) WHERE id IN (…)
+  DB-->>S: 10 rows
+  S->>S: snippets + highlights
+  S-->>V: results, facets, took_ms
+  V->>DB: INSERT INTO search_logs
+  V-->>B: 200 OK, JSON, X-Response-Time-ms
+</pre>
+    <div class="caption">Figure 7 — Request sequence for one search.</div>
+  </div>
+</section>
+
+<section class="chapter">
+  <h2><span class="num">15</span>Top-K retrieval and DSA explanation</h2>
+  <p>After scoring, m candidate documents have scores, but the user sees only k = 10 per page. Sorting all candidates costs O(m log m). Instead <code>heapq.nlargest(k, …)</code> keeps a <b>min-heap of size k</b>: each candidate is compared with the heap's minimum (the weakest of the current best k) and replaces it only if better, costing O(log k). Total: <b>O(m log k)</b> time and O(k) extra memory. For page p, the engine asks for the top p·k and slices the last k, so deep pages remain correct. A test verifies that the heap returns exactly the same ranking as a full sort.</p>
+  <table style="width:75%">
+    <tr><th class="r">Candidates n</th><th class="r">heap Top-10 (ms)</th><th class="r">full sort (ms)</th><th class="r">speed-up</th></tr>
+    {{heap_rows}}
+  </table>
+  <p class="caption" style="text-align:left">Measured with Python 3.13 on synthetic score lists (best of 3 runs).</p>
+  <h3>Snippet selection — two-pointer sweep</h3>
+  <p>Snippets show the 32-word window containing the most distinct query terms. Words are first filtered with an O(1) prefix test (Porter only rewrites suffixes, so a word can stem to a query term only if their first two letters agree), then a two-pointer sweep over the m matching positions maintains term counts incrementally — O(n) cheap filtering plus O(m) window work. This, together with per-thread connection reuse and bounded snippet scanning, reduced end-to-end latency from 100–200 ms to the figures in §23.</p>
+  <h3>Autocomplete — tries</h3>
+  <p>A trie over {{vocab}} surface words (weighted by corpus frequency) and a second trie over popular past queries power suggestions: walking to the node of the typed prefix costs O(P), and the k heaviest completions below it are selected with a heap. “Did you mean” compares an unknown word against vocabulary words sharing its first letter using Levenshtein dynamic programming with early termination once every cell of a row exceeds the edit limit.</p>
+</section>
+
+<!-- ============================================================== CN / DBMS / DSA -->
+<section class="chapter">
+  <h2><span class="num">16</span>Computer Networks concepts used</h2>
+  <table>
+    <tr><th style="width:25%">Concept</th><th>Where and how it is implemented</th></tr>
+    <tr><td>HTTP request–response</td><td><code>fetcher.py</code>: GET requests with <code>User-Agent</code>, <code>Accept</code> and <code>Accept-Language</code> headers; status-code handling (2xx index, 3xx follow ≤5 redirects, 4xx/5xx logged); <code>Content-Type</code> check; <code>Content-Length</code> and streamed size cap.</td></tr>
+    <tr><td>DNS &amp; URL handling</td><td>Host lowercasing and IDNA (punycode) encoding of internationalized names; DNS failures (<code>getaddrinfo</code>) classified as <code>dns</code> errors; tested with the reserved <code>.invalid</code> TLD.</td></tr>
+    <tr><td>TCP-based HTTP</td><td>HTTPX connection pool with keep-alive reuses TCP (and TLS) connections across requests to the same host; refused connections classified separately; tests run against a real localhost TCP server.</td></tr>
+    <tr><td>TLS</td><td>Certificate verification against the OS trust store (<code>truststore</code>); invalid certificates are rejected and logged as <code>tls</code> errors (verified against expired.badssl.com).</td></tr>
+    <tr><td>Concurrent crawling</td><td>asyncio worker coroutines overlap network waits; per-host locks serialize requests to the same server while different hosts proceed in parallel.</td></tr>
+    <tr><td>Timeouts &amp; failures</td><td>Separate connect (5 s) and read (10 s) timeouts; every failure mode becomes a typed <code>crawl_errors</code> row; tests cover timeout, refused connection, DNS failure, HTTP 500, redirects and non-HTML.</td></tr>
+    <tr><td>Rate limiting</td><td>Crawler: ≥0.5 s per host and robots.txt <code>Crawl-delay</code>. API: token bucket per client IP (20 req/s, burst 40) returning 429 with <code>Retry-After</code>.</td></tr>
+    <tr><td>REST communication</td><td>Resource-oriented JSON endpoints, correct status codes (200, 202, 404, 409, 422, 429), CORS, Vite dev proxy, OpenAPI schema.</td></tr>
+    <tr><td>Robots Exclusion Protocol</td><td>robots.txt per origin, cached; RFC 9309 status semantics; <code>noindex/nofollow</code> meta and <code>rel=nofollow</code>.</td></tr>
+  </table>
+
+  <h2 style="margin-top:20pt"><span class="num">17</span>DBMS concepts used</h2>
+  <table>
+    <tr><th style="width:25%">Concept</th><th>Where and how it is implemented</th></tr>
+    <tr><td>Relational schema &amp; normalization</td><td>10 tables in 3NF (§12); M:N terms–documents resolved by <code>postings</code>.</td></tr>
+    <tr><td>Keys &amp; integrity</td><td>Primary, composite, unique and foreign keys with CASCADE / SET NULL; CHECK constraints for enums, ranges and hash lengths; <code>PRAGMA foreign_keys=ON</code>. Tests prove violations are rejected.</td></tr>
+    <tr><td>Indexing</td><td>B-tree indexes chosen per access path; <code>WITHOUT ROWID</code> clustered postings so a postings list is a contiguous range.</td></tr>
+    <tr><td>Query optimization</td><td>Batched <code>IN (…)</code> lookups (≤500 parameters), <code>executemany</code> bulk inserts, <code>substr()</code> pushed into SQL so only 25 KB of each page leaves the database, aggregates computed in SQL, connection reuse per thread.</td></tr>
+    <tr><td>Transactions (ACID)</td><td>Explicit <code>BEGIN IMMEDIATE/COMMIT/ROLLBACK</code>; one transaction per indexed page; rollback test.</td></tr>
+    <tr><td>Triggers</td><td><code>trg_postings_insert/delete</code> maintain the cached <code>doc_freq</code>.</td></tr>
+    <tr><td>Concurrency &amp; durability</td><td>WAL mode (concurrent readers + one writer), busy timeout, crash recovery of stale jobs, restart persistence verified.</td></tr>
+    <tr><td>Repository pattern</td><td>All SQL in <code>repository.py</code>, parameterized (no SQL injection), portable to PostgreSQL.</td></tr>
+  </table>
+</section>
+
+<section class="chapter">
+  <h2><span class="num">18</span>DSA concepts used</h2>
+  <table>
+    <tr><th style="width:24%">Structure / algorithm</th><th>Use</th><th style="width:20%">Complexity</th></tr>
+    <tr><td>Hash map</td><td>Inverted index dictionary, postings <code>{doc: tf}</code>, score accumulator, per-host rate-limit table, robots cache, token buckets</td><td>O(1) average</td></tr>
+    <tr><td>Hash set + hashing</td><td>Visited URLs (SHA-1), duplicate content (SHA-256)</td><td>O(1) average</td></tr>
+    <tr><td>FIFO queue / BFS</td><td>Crawl frontier over the link graph</td><td>O(V + E)</td></tr>
+    <tr><td>Binary heap</td><td>Top-K results, top-k autocomplete completions</td><td>O(m log k)</td></tr>
+    <tr><td>Trie</td><td>Prefix autocomplete over vocabulary and queries</td><td>O(P + S log k)</td></tr>
+    <tr><td>Dynamic programming</td><td>Levenshtein distance for spelling suggestions (with cut-off)</td><td>O(|a|·|b|)</td></tr>
+    <tr><td>Finite rules / string algorithms</td><td>Porter stemmer, regex tokenizer</td><td>O(L) per word</td></tr>
+    <tr><td>Two pointers / sliding window</td><td>Best snippet window</td><td>O(n + m)</td></tr>
+    <tr><td>Sorting</td><td>Ranking ties, facet ordering (Timsort)</td><td>O(n log n)</td></tr>
+    <tr><td>B-trees (via SQLite)</td><td>Every table and index; clustered postings</td><td>O(log n)</td></tr>
+    <tr><td>Memoization (LRU cache)</td><td>Stemmer and snippet term lookup (Zipf's law makes hits frequent)</td><td>O(1) hit</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================== API -->
+<section class="chapter">
+  <h2><span class="num">19</span>API documentation</h2>
+  <p>Base URL <code>http://127.0.0.1:8000</code>. Interactive OpenAPI documentation is served at <code>/docs</code>. All errors return JSON <code>{"detail": …}</code> (validation errors add <code>errors: [{field, message}]</code>).</p>
+  <table>
+    <tr><th>Method &amp; path</th><th>Parameters</th><th>Returns</th></tr>
+    <tr><td><code>GET /api/search</code></td><td><code>q</code> (1–256, required), <code>page</code> 1–100, <code>page_size</code> 1–50, <code>domain</code></td><td>total, took_ms, terms, results[rank, url, domain, title_segments, snippet, score, relevance, term_scores], facets, did_you_mean</td></tr>
+    <tr><td><code>GET /api/suggestions</code></td><td><code>q</code>, <code>limit</code> 1–20</td><td>suggestions[]</td></tr>
+    <tr><td><code>GET /api/stats</code></td><td>–</td><td>documents, terms, postings, domains, latency (avg/p95), crawl success rate, errors by type, timelines, top domains/terms/queries, recent jobs/searches/errors, index snapshot info</td></tr>
+    <tr><td><code>GET /api/documents</code></td><td><code>page</code>, <code>page_size</code> ≤100, <code>domain</code></td><td>total, documents[]</td></tr>
+    <tr><td><code>GET /api/documents/{id}</code></td><td>–</td><td>document metadata, headings, unique_terms, outlinks, content preview (404 if missing)</td></tr>
+    <tr><td><code>POST /api/crawl</code></td><td>JSON: <code>seeds[]</code> (≤10 http(s) URLs; empty = bundled corpus), <code>max_depth</code> 0–5, <code>max_pages</code> 1–1000, <code>same_domain_only</code></td><td>202 {job_id}; 409 if a crawl is running; 422 on invalid input</td></tr>
+    <tr><td><code>GET /api/crawl/status</code></td><td><code>job_id</code> (optional)</td><td>running, job (counters, seeds, errors_by_type), live stats, recent_errors</td></tr>
+    <tr><td><code>GET /api/crawl/jobs</code></td><td><code>limit</code></td><td>jobs[]</td></tr>
+    <tr><td><code>POST /api/crawl/cancel</code></td><td>–</td><td>{status: cancelling}; 409 if none running</td></tr>
+    <tr><td><code>POST /api/index/reload</code></td><td>–</td><td>documents, took_ms</td></tr>
+    <tr><td><code>GET /api/health</code></td><td>–</td><td>status, version, documents, terms, crawl_running</td></tr>
+  </table>
+  <h3>Example</h3>
+  <pre class="code">{{api_example}}</pre>
+</section>
+
+<!-- ============================================================== FOLDERS -->
+<section class="chapter">
+  <h2><span class="num">20</span>Folder structure explanation</h2>
+  <pre class="code">search engine/
+├── backend/
+│   ├── quirksearch/                 Python package — the engine and the API
+│   │   ├── config.py                env-driven settings (paths, limits, timeouts, BM25 k1/b)
+│   │   ├── main.py                  FastAPI app factory, middleware, startup/shutdown, static files
+│   │   ├── api/  routes.py · schemas.py · ratelimit.py
+│   │   ├── crawler/  url_utils.py · fetcher.py · robots.py · parser.py · crawler.py
+│   │   ├── text/  analyzer.py · porter.py · stopwords.py
+│   │   ├── index/  indexer.py · inverted_index.py · trie.py
+│   │   ├── search/  bm25.py · searcher.py · snippets.py
+│   │   ├── db/  schema.sql · database.py · repository.py
+│   │   └── services/  crawl_service.py
+│   ├── corpus/                      bundled QuirkPedia HTML (served at /corpus)
+│   ├── scripts/                     build_corpus · benchmark · screenshots
+│   ├── tests/                       pytest suite ({{tests}} tests)
+│   ├── robots.txt · requirements.txt · pytest.ini
+│   └── data/quirksearch.db          SQLite database (created at runtime)
+├── frontend/
+│   ├── src/pages/                   Home.jsx · Results.jsx · Dashboard.jsx
+│   ├── src/components/              Logo, TopBar, SearchBox, ResultCard, Charts, States, Background, Highlight
+│   ├── src/lib/                     api.js (fetch wrapper) · format.js · theme.js
+│   └── vite.config.js · tailwind.config.js
+├── docs/                            ARCHITECTURE.md · benchmarks.json · screenshots/ · report/
+├── README.md · PROJECT_STATUS.md
+└── QuirkSearch_Technical_Report.pdf</pre>
+  <p>The layering is strict: <code>api</code> depends on <code>services</code> and <code>search</code>; those depend on <code>index</code>, <code>text</code> and <code>db</code>; only <code>db/repository.py</code> contains SQL; the crawler knows nothing about storage and reports pages through a small <code>CrawlSink</code> interface, which is what allowed it to be tested before the database existed.</p>
+</section>
+
+<!-- ============================================================== SCREENSHOTS -->
+<section class="chapter">
+  <h2><span class="num">21</span>Screenshots of the working application</h2>
+  <p>Captured from the running system with headless Chromium (Playwright) at 1440×900 (desktop) and 390×844 (mobile). No browser console errors were recorded.</p>
+  <div class="figure"><img class="shot" src="{{shots}}/home-light.png"><div class="caption">Figure 8 — Home page (light theme) with live index statistics.</div></div>
+  <div class="shots2">
+    <div class="figure"><img class="shot" src="{{shots}}/autocomplete-light.png"><div class="caption">Figure 9 — Trie-backed autocomplete.</div></div>
+    <div class="figure"><img class="shot" src="{{shots}}/home-dark.png"><div class="caption">Figure 10 — Home page, dark theme.</div></div>
+  </div>
+</section>
+<section class="chapter">
+  <div class="figure"><img class="shot" src="{{shots}}/results-light.png"><div class="caption">Figure 11 — Results for “write ahead log”: highlighted snippets, relevance, BM25 score, domain facets, query analysis.</div></div>
+  <div class="shots2">
+    <div class="figure"><img class="shot" src="{{shots}}/results-explain-light.png"><div class="caption">Figure 12 — “Why this result?” per-term BM25 breakdown.</div></div>
+    <div class="figure"><img class="shot" src="{{shots}}/results-empty-light.png"><div class="caption">Figure 13 — Empty state with “did you mean”.</div></div>
+  </div>
+</section>
+<section class="chapter">
+  <div class="figure"><img class="shot" src="{{shots}}/dashboard-light.png"><div class="caption">Figure 14 — Analytics dashboard: KPIs and crawl control.</div></div>
+  <div class="figure"><img class="shot" src="{{shots}}/dashboard-crawling-light.png"><div class="caption">Figure 15 — A crawl started from the dashboard, showing live progress.</div></div>
+</section>
+<section class="chapter">
+  <div class="shots2">
+    <div class="figure"><img class="shot" src="{{shots}}/dashboard-full-dark.png"><div class="caption">Figure 16 — Full dashboard, dark theme.</div></div>
+    <div>
+      <div class="shots2">
+        <div class="figure"><img class="shot" src="{{shots}}/mobile-home.png"><div class="caption">Figure 17 — Mobile home.</div></div>
+        <div class="figure"><img class="shot" src="{{shots}}/mobile-results.png"><div class="caption">Figure 18 — Mobile results.</div></div>
+      </div>
+      <div class="figure"><img class="shot" src="{{shots}}/results-dark.png"><div class="caption">Figure 19 — Results, dark theme.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== TESTING -->
+<section class="chapter">
+  <h2><span class="num">22</span>Testing methodology and results</h2>
+  <p>Testing combined automated unit, integration and API tests with live end-to-end verification. Network tests use a <b>real HTTP server on a random localhost TCP port</b> (not mocks), serving the corpus plus endpoints that deliberately sleep, redirect, fail or return non-HTML content.</p>
+  <table>
+    <tr><th>Test module</th><th class="r">Tests</th><th>What is verified</th></tr>
+    {{test_rows}}
+    <tr><td><b>Total</b></td><td class="r"><b>{{tests}}</b></td><td><b>all passing · {{coverage}} statement coverage</b></td></tr>
+  </table>
+  <h3>Coverage by module</h3>
+  <table style="width:80%">
+    <tr><th>Module</th><th class="r">Statements</th><th class="r">Coverage</th></tr>
+    {{coverage_rows}}
+  </table>
+  <h3>End-to-end and manual verification</h3>
+  <ul>
+    <li><b>Auto-seed:</b> starting the server on an empty database crawled the bundled corpus over HTTP: 42 fetched, 40 indexed, plus exactly one <code>robots</code>, one <code>duplicate</code> and one HTTP 404 error — matching the corpus' planted edge cases.</li>
+    <li><b>Live web:</b> sqlite.org (8 pages, 0 failures) and docs.python.org (24 pages; 1 page &gt; 2 MB correctly skipped as <code>too_large</code>).</li>
+    <li><b>Restart persistence:</b> identical document and term counts before and after restarting the server process.</li>
+    <li><b>UI:</b> Playwright drove the real application (search, autocomplete, explanation panel, empty state, dashboard, crawl start → live progress → completion, mobile layouts) with no console errors and no horizontal overflow on mobile.</li>
+  </ul>
+  <h3>Bugs found by testing and fixed</h3>
+  <table>
+    <tr><th style="width:32%">Symptom</th><th>Root cause → fix</th></tr>
+    <tr><td>Crawl of docs.python.org rejected every page as robots-blocked</td><td>TLS verification failed (certifi bundle lacked the machine's root CA) → robots.txt unreachable → “disallow all”. Fixed by using the OS trust store; TLS errors now get their own type and the robots message records the cause.</td></tr>
+    <tr><td><code>internal</code> error on docs.python.org</td><td>Nested <code>role="navigation"</code> elements: decomposing the outer one left dead inner nodes in the iteration list. Skip already-decomposed nodes; regression test added.</td></tr>
+    <tr><td>Flaky API test: job “completed” while still running</td><td>Final index reload ran after the status update. Reordered so “completed” guarantees all pages are searchable.</td></tr>
+    <tr><td>Search requests took 100–200 ms</td><td>Profiling showed snippet generation (95%) and opening SQLite connections (~10 ms each). Prefix pre-filter + two-pointer window, per-thread connection reuse and SQL-side <code>substr()</code>.</td></tr>
+    <tr><td>Wikipedia returned HTTP 403</td><td>Wikimedia rejects unidentified bots. Respected (no browser spoofing); documented as a limitation.</td></tr>
+    <tr><td>Mobile search box squeezed; chart axis labels clipped</td><td>Found in screenshots; compact logo and nav on mobile; units moved to chart subtitle.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================== PERFORMANCE -->
+<section class="chapter">
+  <h2><span class="num">23</span>Performance measurements</h2>
+  <p>Produced by <code>scripts/benchmark.py</code> on the live database ({{documents}} documents, {{terms}} terms, {{postings}} postings, {{db_size}} SQLite file) on {{machine}}. {{nq}} distinct queries × {{reps}} repetitions after warm-up; every query returned results (average {{avg_hits}} matching documents).</p>
+  <div class="kpis">
+    <div class="kpi"><b>{{ret_mean}} ms</b><span>retrieval + BM25 + Top-K (mean)</span></div>
+    <div class="kpi"><b>{{eng_p50}} ms</b><span>full engine search incl. snippets (median)</span></div>
+    <div class="kpi"><b>{{http_p50}} ms</b><span>HTTP end-to-end (median)</span></div>
+    <div class="kpi"><b>{{speedup}}×</b><span>inverted index vs. linear scan</span></div>
+  </div>
+  <table>
+    <tr><th>Measurement</th><th class="r">n</th><th class="r">mean</th><th class="r">p50</th><th class="r">p95</th><th class="r">p99</th><th class="r">max</th></tr>
+    {{latency_rows}}
+  </table>
+  <p><b>Interpretation.</b> Retrieval and ranking are sub-millisecond: the hash-map index touches only matching postings. Most of the engine time is snippet generation over the stored text of the ten displayed pages, and the HTTP figure adds JSON serialization, the search-log INSERT and the ASGI stack. The latency chart on the dashboard (Figure 16) includes the slower searches logged before the optimizations of §22.</p>
+  <h3>Index, ingestion and crawling</h3>
+  <table>
+    <tr><th>Measurement</th><th class="r">Result</th></tr>
+    <tr><td>Inverted-index lookup vs. re-tokenizing all documents (10 queries)</td><td class="r">{{idx_ms}} ms vs {{scan_ms}} ms</td></tr>
+    <tr><td>Loading the in-memory index + trie from SQLite (startup / reload)</td><td class="r">{{load_ms}} ms (mean of 5)</td></tr>
+    <tr><td>Indexing throughput (analyze + one transaction per page, fresh DB)</td><td class="r">{{idx_dps}} docs/s ({{idx_msdoc}} ms/doc)</td></tr>
+    <tr><td>Crawl success rate (fetched / (fetched + failed requests))</td><td class="r">{{success_rate}}</td></tr>
+  </table>
+  <table>
+    <tr><th>Crawl job</th><th class="r">Fetched</th><th class="r">Indexed</th><th class="r">Failed</th><th class="r">Seconds</th><th class="r">Pages/s</th></tr>
+    {{crawl_rows}}
+  </table>
+  <p>Crawl throughput is bounded by design: the per-host politeness delay of 0.5 s permits at most 2 requests/s to a single host, and the measured 1.3–1.9 pages/s sits just below that ceiling (the remainder is network and indexing time). Crawling several hosts at once would scale with the number of hosts because the limiter is per host.</p>
+</section>
+
+<!-- ============================================================== COMPLEXITY -->
+<section class="chapter">
+  <h2><span class="num">24</span>Time and space complexity analysis</h2>
+  <p>Notation: N documents, T distinct terms, P total postings, |d| tokens in a document, u<sub>d</sub> distinct terms in d, q query terms, m candidate documents, k results per page, V crawled vertices (URLs), E hyperlinks, L word length.</p>
+  <table>
+    <tr><th style="width:30%">Operation</th><th style="width:26%">Time</th><th>Space / notes</th></tr>
+    <tr><td>Crawl (BFS)</td><td>O(V + E) set/queue ops</td><td>O(V) visited set + frontier; network-bound</td></tr>
+    <tr><td>URL canonicalization</td><td>O(|url|)</td><td>–</td></tr>
+    <tr><td>Analyze a document</td><td>O(|d| · L) (stemming memoized)</td><td>O(u<sub>d</sub>) term counter</td></tr>
+    <tr><td>Index one document (DB)</td><td>O(u<sub>d</sub> log P) B-tree inserts</td><td>one transaction</td></tr>
+    <tr><td>Re-index / delete document</td><td>O(u<sub>d</sub> log P)</td><td>secondary index on postings(doc_id)</td></tr>
+    <tr><td>Load index into memory</td><td>O(P + N)</td><td>O(P + T + N) hash maps</td></tr>
+    <tr><td>Query: retrieve + score</td><td>O(q + Σ df(t<sub>i</sub>)) = O(q + m′)</td><td>O(m) score accumulator</td></tr>
+    <tr><td>Top-K selection</td><td>O(m log k)</td><td>O(k) heap</td></tr>
+    <tr><td>Snippets for a page</td><td>O(k · (n<sub>w</sub> + matches))</td><td>n<sub>w</sub> ≤ 25,000 chars per page</td></tr>
+    <tr><td>Autocomplete</td><td>O(P<sub>len</sub> + S log k)</td><td>trie O(total characters)</td></tr>
+    <tr><td>Spelling suggestion</td><td>O(W<sub>c</sub> · |w|²) worst case, early cut-off</td><td>W<sub>c</sub> vocabulary words with same initial</td></tr>
+    <tr><td>Linear scan (no index, for comparison)</td><td>O(Σ |d|) per query</td><td>what the inverted index avoids</td></tr>
+  </table>
+  <p>Storage grows linearly: the database holds the cleaned text (bounded to 60,000 characters per page), one posting per (term, document) pair and one row per link. For the current corpus that is {{postings}} postings and {{db_size}} on disk.</p>
+
+  <h2 style="margin-top:20pt"><span class="num">25</span>Limitations</h2>
+  <ul>
+    <li><b>No positional index</b> — exact-phrase and proximity queries are not supported; multi-word queries are ranked bag-of-words (with optional <code>+term</code> AND semantics).</li>
+    <li><b>No JavaScript rendering</b> — pages whose content is produced client-side are indexed as their static HTML only.</li>
+    <li><b>Porter stemming limits</b> — e.g. “trie” → <code>trie</code> but “tries” → <code>tri</code>, so they do not conflate; over-stemming can merge unrelated words. English-only stop words and stemming.</li>
+    <li><b>Some sites refuse generic bots</b> — Wikipedia answers 403 under Wikimedia's robot policy; the crawler respects this rather than impersonating a browser.</li>
+    <li><b>Single node</b> — one SQLite writer and an in-memory index sized by RAM; fine for tens of thousands of pages, not for the open web. The full index is reloaded after crawls (≈{{load_ms}} ms now; grows with P).</li>
+    <li><b>Boilerplate</b> — footer/related-link text on some sites is indexed (“related”, “documentation” are among the highest-df terms); BM25's IDF largely neutralizes them.</li>
+    <li><b>Duplicate detection is exact</b> (SHA-256); near-duplicates are not detected.</li>
+  </ul>
+
+  <h2 style="margin-top:20pt"><span class="num">26</span>Future enhancements</h2>
+  <ul>
+    <li>Positional postings for phrase and proximity scoring; BM25F with per-field lengths.</li>
+    <li>PageRank over the stored <code>links</code> graph, blended with BM25.</li>
+    <li>SimHash/MinHash near-duplicate detection; sitemap.xml discovery; conditional GET (ETag/If-Modified-Since) for cheap re-crawls; scheduled re-crawling.</li>
+    <li>PostgreSQL backend (repository already isolated), incremental in-memory updates instead of full reloads, compressed (delta + varint) postings.</li>
+    <li>Query-log-based learning to rank, synonyms, multilingual analyzers.</li>
+    <li>Docker Compose packaging and CI running the test suite on every commit.</li>
+  </ul>
+
+  <h2 style="margin-top:20pt"><span class="num">27</span>Conclusion</h2>
+  <p>QuirkSearch demonstrates that the core of a web search engine can be built, understood and measured end-to-end. Computer Networks concepts appear as a polite, concurrent, failure-tolerant HTTP crawler; DBMS concepts as a normalized, constraint-checked, transactional schema with triggers and purposeful indexes; and DSA concepts as the hash-map inverted index, BFS traversal, heap Top-K, tries, dynamic programming and a hand-written Porter stemmer. The result is a working product — {{documents}} pages indexed, sub-millisecond ranking, {{tests}} passing tests — whose every ranking decision can be explained to the user, one term at a time.</p>
+</section>
+
+<section class="chapter">
+  <h2><span class="num">A</span>Appendix: how to run</h2>
+  <pre class="code"># Backend (Python 3.11+)
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn quirksearch.main:app --port 8000     # auto-crawls the bundled corpus on first start
+
+# Frontend (Node 18+)
+cd frontend
+npm install
+npm run dev                      # http://localhost:5173  (proxies /api to :8000)
+npm run build                    # or build once and open http://127.0.0.1:8000
+
+# Tests and measurements
+cd backend
+pytest --cov=quirksearch
+python scripts/benchmark.py      # writes docs/benchmarks.json</pre>
+</section>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "loose",
+    themeVariables: { fontFamily: "Inter, sans-serif", fontSize: "13px", primaryColor: "#f3f1ff", primaryBorderColor: "#6d5dfc", lineColor: "#77777f" },
+    flowchart: { curve: "basis", htmlLabels: true, padding: 10 }, er: { fontSize: 11 } });
+  try { await mermaid.run({ querySelector: ".mermaid" }); window.__diagramsOk = true; }
+  catch (e) { window.__diagramError = String(e); }
+  finally { window.__diagramsDone = true; }
+</script>
+</body>
+</html>
