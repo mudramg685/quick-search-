@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Query Optimization · QuirkPedia</title>
+<meta name="description" content="How a database planner chooses join orders and access paths using statistics.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#databases">Databases</a></nav></header>
+<main>
+<article>
+<h1>Query Optimization</h1>
+<p class="lead">How a database planner chooses join orders and access paths using statistics.</p>
+<h2>The query planner</h2>
+<p>SQL is declarative: the database decides how to execute a query. The optimizer enumerates plans, estimates their cost using table statistics and picks the cheapest, choosing between index lookups and scans and between nested-loop, hash and merge joins.</p>
+<p>EXPLAIN QUERY PLAN in SQLite reveals whether a query uses an index.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="indexing-btrees.html">Database Indexes and B-Trees</a></li><li><a href="sql-basics.html">SQL Basics</a></li><li><a href="hash-tables.html">Hash Tables</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

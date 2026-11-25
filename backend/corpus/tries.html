@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tries and Prefix Trees · QuirkPedia</title>
+<meta name="description" content="Tree structures keyed by characters that power autocomplete and prefix search.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#algorithms">Algorithms</a></nav></header>
+<main>
+<article>
+<h1>Tries and Prefix Trees</h1>
+<p class="lead">Tree structures keyed by characters that power autocomplete and prefix search.</p>
+<h2>Structure</h2>
+<p>A trie stores strings character by character: each edge is labelled with a character and each path from the root spells a prefix. Looking up a prefix of length m takes O(m) time regardless of how many words are stored.</p>
+<h2>Autocomplete</h2>
+<p>To suggest completions, walk down to the node for the typed prefix and collect the words beneath it, ranking them by frequency. Search boxes use this to offer suggestions as the user types.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="autocomplete.html">Search Autocomplete</a></li><li><a href="hash-tables.html">Hash Tables</a></li><li><a href="heaps-priority-queues.html">Heaps and Priority Queues</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

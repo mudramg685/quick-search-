@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rate Limiting and Politeness · QuirkPedia</title>
+<meta name="description" content="Token buckets, sliding windows and crawl delays that protect servers from overload.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#networks">Networks</a></nav></header>
+<main>
+<article>
+<h1>Rate Limiting and Politeness</h1>
+<p class="lead">Token buckets, sliding windows and crawl delays that protect servers from overload.</p>
+<h2>Why limit request rates</h2>
+<p>Servers have finite capacity. Rate limiting caps how many requests a client may send in a time window, protecting availability and ensuring fair use.</p>
+<h2>Algorithms</h2>
+<p>The token bucket algorithm adds tokens at a fixed rate and spends one per request, allowing short bursts. A fixed delay between requests to the same host is the simplest scheme and is what polite web crawlers use, often honoring the Crawl-delay directive from robots.txt.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="web-crawlers.html">How Web Crawlers Work</a></li><li><a href="robots-txt.html">The robots.txt Standard</a></li><li><a href="rest-apis.html">Designing REST APIs</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

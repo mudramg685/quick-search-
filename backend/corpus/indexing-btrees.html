@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Database Indexes and B-Trees · QuirkPedia</title>
+<meta name="description" content="Why indexes make lookups logarithmic and how B-trees keep them balanced.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#databases">Databases</a></nav></header>
+<main>
+<article>
+<h1>Database Indexes and B-Trees</h1>
+<p class="lead">Why indexes make lookups logarithmic and how B-trees keep them balanced.</p>
+<h2>B-tree indexes</h2>
+<p>A B-tree is a balanced search tree with high fan-out. Because each node holds many keys, the tree stays shallow and a lookup touches only a few disk pages: O(log n) instead of a full table scan.</p>
+<p>Most relational databases, including SQLite and PostgreSQL, implement primary keys and secondary indexes as B-trees or B+ trees.</p>
+<h2>Choosing indexes</h2>
+<p>Index the columns used in WHERE clauses and joins. Composite indexes serve queries that filter on their leftmost columns. Every index speeds reads but slows writes, so index deliberately.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="query-optimization.html">Query Optimization</a></li><li><a href="binary-search.html">Binary Search</a></li><li><a href="sql-basics.html">SQL Basics</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

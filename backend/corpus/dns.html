@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DNS: The Internet&#x27;s Phone Book · QuirkPedia</title>
+<meta name="description" content="How domain names are resolved to IP addresses through a hierarchy of name servers and caches.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#networks">Networks</a></nav></header>
+<main>
+<article>
+<h1>DNS: The Internet&#x27;s Phone Book</h1>
+<p class="lead">How domain names are resolved to IP addresses through a hierarchy of name servers and caches.</p>
+<h2>Name resolution</h2>
+<p>The Domain Name System maps human-friendly names like example.com to IP addresses. A stub resolver asks a recursive resolver, which walks the hierarchy from the root servers to the top-level domain servers and finally the authoritative name server.</p>
+<h2>Records and caching</h2>
+<p>Common record types include A and AAAA for addresses, CNAME for aliases, MX for mail and TXT for arbitrary text. Every answer carries a time-to-live so resolvers can cache it, which keeps DNS fast and reduces load on authoritative servers.</p>
+<p>A crawler that visits thousands of URLs on the same host benefits enormously from DNS caching and connection reuse.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="tcp-ip.html">TCP/IP and the Transport Layer</a></li><li><a href="http-protocol.html">HTTP: The Hypertext Transfer Protocol</a></li><li><a href="cdn.html">Content Delivery Networks</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

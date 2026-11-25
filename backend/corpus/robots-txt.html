@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The robots.txt Standard · QuirkPedia</title>
+<meta name="description" content="The Robots Exclusion Protocol tells crawlers which paths they may visit.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#search">Search</a></nav></header>
+<main>
+<article>
+<h1>The robots.txt Standard</h1>
+<p class="lead">The Robots Exclusion Protocol tells crawlers which paths they may visit.</p>
+<h2>Syntax</h2>
+<p>A robots.txt file lives at the root of a host. It contains groups that start with a User-agent line followed by Allow and Disallow rules for path prefixes. RFC 9309 standardized the format in 2022.</p>
+<h2>Semantics</h2>
+<p>If robots.txt returns a 4xx status the crawler may access everything; if the server is unreachable or returns 5xx the crawler should assume everything is disallowed.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="web-crawlers.html">How Web Crawlers Work</a></li><li><a href="rate-limiting.html">Rate Limiting and Politeness</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

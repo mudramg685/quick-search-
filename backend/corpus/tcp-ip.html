@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TCP/IP and the Transport Layer · QuirkPedia</title>
+<meta name="description" content="Reliable byte streams over an unreliable network: handshakes, acknowledgements and congestion control.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#networks">Networks</a></nav></header>
+<main>
+<article>
+<h1>TCP/IP and the Transport Layer</h1>
+<p class="lead">Reliable byte streams over an unreliable network: handshakes, acknowledgements and congestion control.</p>
+<h2>Layers of the Internet</h2>
+<p>The Internet protocol suite stacks link, internet (IP), transport (TCP and UDP) and application layers. IP delivers packets between hosts on a best-effort basis; TCP turns that into a reliable, ordered byte stream between processes identified by ports.</p>
+<h2>The three-way handshake</h2>
+<p>A TCP connection starts with SYN, SYN-ACK and ACK segments that synchronize sequence numbers. Every byte sent is acknowledged; lost segments are retransmitted after a timeout.</p>
+<p>Each new connection costs at least one network round trip, which is why HTTP clients keep connection pools and reuse sockets.</p>
+<h2>Flow and congestion control</h2>
+<p>A sliding window prevents a fast sender from overwhelming a slow receiver, and congestion control algorithms such as slow start and CUBIC probe the available bandwidth while backing off when packets are dropped.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="http-protocol.html">HTTP: The Hypertext Transfer Protocol</a></li><li><a href="osi-model.html">The OSI Reference Model</a></li><li><a href="dns.html">DNS: The Internet&#x27;s Phone Book</a></li><li><a href="load-balancing.html">Load Balancing</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>
