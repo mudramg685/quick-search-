@@ -6,7 +6,7 @@ import { Background } from "../components/Background";
 import { LogoMark } from "../components/Logo";
 import { SearchBox } from "../components/SearchBox";
 import { ThemeToggle } from "../components/TopBar";
-import { api } from "../lib/api";
+import { STATIC, api } from "../lib/api";
 import { fmtInt, fmtMs } from "../lib/format";
 
 const SUGGESTED = ["bm25 ranking", "tcp handshake", "inverted index", "write ahead log", "python list comprehension", "octopus"];
@@ -49,7 +49,7 @@ function LiveStats() {
           {!failed && <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: "var(--status-good)" }} />}
           <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: failed ? "var(--status-critical)" : "var(--status-good)" }} />
         </span>
-        {failed ? "Backend offline" : "Live index"}
+        {failed ? "Backend offline" : STATIC ? "Index snapshot" : "Live index"}
       </span>
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:flex sm:gap-0 sm:divide-x sm:divide-line">
         {items.map((it) => (

@@ -9,3 +9,5 @@ frontend/dist/
 .env
 *.log
 docs/report_build/
+frontend/dist-pages/
+frontend/static-data/

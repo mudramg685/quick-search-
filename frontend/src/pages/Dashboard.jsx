@@ -9,7 +9,7 @@ import clsx from "clsx";
 import { TopBar } from "../components/TopBar";
 import { BarList, ColumnChart, LatencyChart } from "../components/Charts";
 import { ErrorState } from "../components/States";
-import { api } from "../lib/api";
+import { STATIC, REPO_URL, api } from "../lib/api";
 import { fmtBytes, fmtInt, fmtMs, fmtPct, timeAgo } from "../lib/format";
 
 function Panel({ title, subtitle, icon: Icon, action, children, className }) {
@@ -119,6 +119,12 @@ function CrawlPanel({ onFinished }) {
   return (
     <Panel title="Crawler" subtitle="Breadth-first crawl · robots.txt · per-host rate limit" icon={Waypoints}
       action={job && <StatusPill status={running ? "running" : job.status} />}>
+      {STATIC ? (
+        <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-2">
+          Crawling runs in the Python backend, which this hosted demo does not include. The numbers on this page are a
+          snapshot from the real crawler. <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-ink underline underline-offset-2">Run it locally</a> to crawl new sites.
+        </p>
+      ) : (
       <form onSubmit={start} className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
         <label className="sr-only" htmlFor="seed">Seed URL</label>
         <input id="seed" value={seed} onChange={(e) => setSeed(e.target.value)} disabled={running}
@@ -145,6 +151,7 @@ function CrawlPanel({ onFinished }) {
           </button>
         )}
       </form>
+      )}
       {error && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {job && (

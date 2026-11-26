@@ -41,7 +41,50 @@ async function request(path, { method = "GET", params, body, signal } = {}) {
   return data;
 }
 
-export const api = {
+export const STATIC = import.meta.env.VITE_STATIC === "1";
+export const REPO_URL = "https://github.com/mudramg685/quick-search-";
+
+// ---- static mode (GitHub Pages): the real index snapshot is searched in the browser ----
+let enginePromise = null;
+function staticData() {
+  enginePromise ??= Promise.all([
+    fetch(`${import.meta.env.BASE_URL}index.json`).then((r) => {
+      if (!r.ok) throw new ApiError("Could not load the search index snapshot.", r.status);
+      return r.json();
+    }),
+    import("./staticEngine.js"),
+  ]).then(([data, mod]) => ({ data, engine: mod.createEngine(data) }));
+  return enginePromise;
+}
+const backendOnly = () =>
+  Promise.reject(new ApiError("Crawling needs the Python backend. This hosted demo searches a snapshot of the index; run the project locally to crawl.", 501));
+
+const staticApi = {
+  search: (q, opts = {}) => staticData().then(({ engine }) => {
+    const res = engine.search(q, opts);
+    // Corpus pages were crawled from the local backend; the static site hosts copies of them.
+    const corpusBase = new URL(`${import.meta.env.BASE_URL}corpus/`, window.location.href).href;
+    res.results.forEach((r) => { r.url = r.url.replace(/^http:\/\/127\.0\.0\.1:8000\/corpus\//, corpusBase); });
+    return res;
+  }),
+  suggestions: (q) => staticData().then(({ engine }) => ({ query: q, suggestions: engine.suggest(q) })),
+  stats: () => staticData().then(({ data }) => ({
+    ...data.stats,
+    index: { documents: data.docs.length, terms: Object.keys(data.postings).length, vocabulary: Object.keys(data.vocab).length,
+      loaded_at: Date.parse(data.generated_at) / 1000, last_reload_ms: null },
+    crawl: { running: false, job_id: null, live: null },
+  })),
+  health: () => staticData().then(({ data }) => ({ status: "ok", documents: data.docs.length })),
+  documents: () => staticData().then(({ data }) => data.documents),
+  crawlStatus: () => staticData().then(({ data }) => ({
+    running: false, job: data.stats.recent_jobs[0] ? { ...data.stats.recent_jobs[0], seeds: [] } : null,
+    live: null, recent_errors: data.stats.recent_errors,
+  })),
+  startCrawl: backendOnly,
+  cancelCrawl: backendOnly,
+};
+
+const serverApi = {
   search: (q, { page = 1, pageSize = 10, domain } = {}, signal) =>
     request("/api/search", { params: { q, page, page_size: pageSize, domain }, signal }),
   suggestions: (q, signal) => request("/api/suggestions", { params: { q, limit: 7 }, signal }),
@@ -52,3 +95,5 @@ export const api = {
   startCrawl: (body) => request("/api/crawl", { method: "POST", body }),
   cancelCrawl: () => request("/api/crawl/cancel", { method: "POST" }),
 };
+
+export const api = STATIC ? staticApi : serverApi;
