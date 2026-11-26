@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Heaps and Priority Queues · QuirkPedia</title>
+<meta name="description" content="Binary heaps give O(log n) insert and extract-min, perfect for top-k selection.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#algorithms">Algorithms</a></nav></header>
+<main>
+<article>
+<h1>Heaps and Priority Queues</h1>
+<p class="lead">Binary heaps give O(log n) insert and extract-min, perfect for top-k selection.</p>
+<h2>Binary heaps</h2>
+<p>A binary heap is a complete binary tree stored in an array where every parent is ordered relative to its children. Insertion and removal of the minimum take O(log n) time.</p>
+<h2>Top-k selection</h2>
+<p>To find the k highest scores among n items, keep a min-heap of size k: push each item and pop the smallest whenever the heap exceeds k. This costs O(n log k), far cheaper than sorting everything when k is small. Search engines use exactly this to return the top ten results.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="sorting-algorithms.html">Sorting Algorithms</a></li><li><a href="bm25.html">BM25 Ranking Function</a></li><li><a href="big-o.html">Big-O Notation and Complexity</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

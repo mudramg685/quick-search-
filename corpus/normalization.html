@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Database Normalization · QuirkPedia</title>
+<meta name="description" content="First, second and third normal form: removing redundancy and update anomalies.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#databases">Databases</a></nav></header>
+<main>
+<article>
+<h1>Database Normalization</h1>
+<p class="lead">First, second and third normal form: removing redundancy and update anomalies.</p>
+<h2>Normal forms</h2>
+<p>Normalization organizes tables so each fact is stored once. First normal form requires atomic column values, second normal form removes partial dependencies on a composite key, and third normal form removes transitive dependencies between non-key columns.</p>
+<h2>Trade-offs</h2>
+<p>A normalized schema avoids insertion, update and deletion anomalies. Read-heavy systems sometimes denormalize selected data, such as caching a document frequency, to save joins.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="relational-databases.html">Relational Databases</a></li><li><a href="sql-basics.html">SQL Basics</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

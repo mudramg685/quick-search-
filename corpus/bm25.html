@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BM25 Ranking Function · QuirkPedia</title>
+<meta name="description" content="Okapi BM25 scores documents with saturating term frequency and length normalization.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#search">Search</a></nav></header>
+<main>
+<article>
+<h1>BM25 Ranking Function</h1>
+<p class="lead">Okapi BM25 scores documents with saturating term frequency and length normalization.</p>
+<h2>Scoring</h2>
+<p>BM25 sums, over the query terms, the inverse document frequency of the term multiplied by a saturating function of term frequency: tf times (k1 + 1) divided by tf plus k1 times (1 minus b plus b times document length over average document length).</p>
+<p>Typical parameters are k1 between 1.2 and 2.0 and b equal to 0.75. The parameter k1 controls how quickly repeated occurrences stop adding score, and b controls how strongly long documents are penalised.</p>
+<h2>In practice</h2>
+<p>BM25 remains a strong baseline and is the default ranking function in Lucene, Elasticsearch and many other search engines.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="tf-idf.html">TF-IDF Weighting</a></li><li><a href="inverted-index.html">The Inverted Index</a></li><li><a href="heaps-priority-queues.html">Heaps and Priority Queues</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

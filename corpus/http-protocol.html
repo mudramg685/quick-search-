@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HTTP: The Hypertext Transfer Protocol · QuirkPedia</title>
+<meta name="description" content="How browsers and servers talk: requests, responses, methods, status codes and headers.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#networks">Networks</a></nav></header>
+<main>
+<article>
+<h1>HTTP: The Hypertext Transfer Protocol</h1>
+<p class="lead">How browsers and servers talk: requests, responses, methods, status codes and headers.</p>
+<h2>The request-response cycle</h2>
+<p>HTTP is a stateless, application-layer protocol. A client opens a TCP connection to a server, sends a request line such as GET /index.html HTTP/1.1 followed by headers, and the server answers with a status line, response headers and an optional body.</p>
+<p>Because the protocol is stateless, every request carries all the information the server needs. Cookies and tokens are layered on top to emulate sessions.</p>
+<h2>Methods and status codes</h2>
+<p>GET retrieves a resource, POST submits data, PUT replaces a resource and DELETE removes it. Status codes group outcomes: 2xx success, 3xx redirection, 4xx client errors such as 404 Not Found, and 5xx server errors such as 503 Service Unavailable.</p>
+<p>Web crawlers rely on status codes to decide whether to index a page, follow a redirect or record a crawl error.</p>
+<h2>Persistent connections</h2>
+<p>HTTP/1.1 keeps connections alive so several requests reuse one TCP handshake. HTTP/2 multiplexes many streams over one connection, and HTTP/3 runs over QUIC on UDP to avoid head-of-line blocking.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="tcp-ip.html">TCP/IP and the Transport Layer</a></li><li><a href="dns.html">DNS: The Internet&#x27;s Phone Book</a></li><li><a href="rest-apis.html">Designing REST APIs</a></li><li><a href="tls-https.html">TLS and HTTPS</a></li><li><a href="web-crawlers.html">How Web Crawlers Work</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

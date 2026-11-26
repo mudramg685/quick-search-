@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SQL Basics · QuirkPedia</title>
+<meta name="description" content="SELECT, JOIN, GROUP BY and friends: querying relational data with SQL.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#databases">Databases</a></nav></header>
+<main>
+<article>
+<h1>SQL Basics</h1>
+<p class="lead">SELECT, JOIN, GROUP BY and friends: querying relational data with SQL.</p>
+<h2>Querying</h2>
+<p>SELECT chooses columns, FROM names tables, WHERE filters rows, JOIN combines tables on matching keys, GROUP BY aggregates and ORDER BY sorts. For example, a search engine can count postings per document with SELECT doc_id, COUNT(*) FROM postings GROUP BY doc_id.</p>
+<h2>Modifying data</h2>
+<p>INSERT adds rows, UPDATE changes them and DELETE removes them. Upserts such as INSERT ... ON CONFLICT DO UPDATE combine insert and update in one atomic statement.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="relational-databases.html">Relational Databases</a></li><li><a href="indexing-btrees.html">Database Indexes and B-Trees</a></li><li><a href="query-optimization.html">Query Optimization</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

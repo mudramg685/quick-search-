@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hash Tables · QuirkPedia</title>
+<meta name="description" content="Constant-time lookups with hash functions, buckets and collision resolution.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#algorithms">Algorithms</a></nav></header>
+<main>
+<article>
+<h1>Hash Tables</h1>
+<p class="lead">Constant-time lookups with hash functions, buckets and collision resolution.</p>
+<h2>How hashing works</h2>
+<p>A hash table maps keys to values by computing a hash function that turns a key into an array index. With a good hash function and a bounded load factor, insertion, deletion and lookup run in expected O(1) time.</p>
+<h2>Collisions</h2>
+<p>Two keys may hash to the same slot. Separate chaining stores colliding entries in a list per bucket, while open addressing probes for another empty slot. Python dictionaries use open addressing.</p>
+<p>Search engines use hash maps for the inverted index dictionary, mapping each term to its postings list.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="inverted-index.html">The Inverted Index</a></li><li><a href="tries.html">Tries and Prefix Trees</a></li><li><a href="big-o.html">Big-O Notation and Complexity</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

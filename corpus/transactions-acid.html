@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Transactions and ACID · QuirkPedia</title>
+<meta name="description" content="Atomicity, consistency, isolation and durability keep data correct under failures.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#databases">Databases</a></nav></header>
+<main>
+<article>
+<h1>Transactions and ACID</h1>
+<p class="lead">Atomicity, consistency, isolation and durability keep data correct under failures.</p>
+<h2>ACID properties</h2>
+<p>A transaction groups operations into one unit. Atomicity means all or nothing, consistency preserves integrity constraints, isolation hides concurrent transactions from each other, and durability guarantees committed data survives crashes.</p>
+<h2>Write-ahead logging</h2>
+<p>Databases achieve durability and atomicity by writing changes to a log before applying them. SQLite&#x27;s WAL mode lets readers continue while a writer appends to the log.</p>
+<p>An indexer should insert a document and all its postings in a single transaction so a crash never leaves a half-indexed page.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="relational-databases.html">Relational Databases</a></li><li><a href="sqlite.html">SQLite</a></li><li><a href="postgresql.html">PostgreSQL</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Web Crawlers Work · QuirkPedia</title>
+<meta name="description" content="Frontiers, graph traversal, politeness and duplicate detection inside a web spider.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#search">Search</a></nav></header>
+<main>
+<article>
+<h1>How Web Crawlers Work</h1>
+<p class="lead">Frontiers, graph traversal, politeness and duplicate detection inside a web spider.</p>
+<h2>The crawl loop</h2>
+<p>A web crawler starts from seed URLs, downloads each page, extracts its links and adds unseen links to a frontier queue. Processing the frontier in first-in first-out order produces a breadth-first traversal of the web graph.</p>
+<p>A visited set, usually a hash set of normalized URLs, guarantees each page is fetched once even when thousands of pages link to it.</p>
+<h2>Politeness and robustness</h2>
+<p>Responsible crawlers respect robots.txt, limit their request rate per host, set timeouts and identify themselves with a descriptive User-Agent. They must survive DNS failures, refused connections, redirects and malformed HTML.</p>
+<h2>Duplicate content</h2>
+<p>Different URLs often serve identical content. Hashing the normalized text of each page with a function such as SHA-256 detects exact duplicates in constant time.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="graph-traversal.html">Graph Traversal: BFS and DFS</a></li><li><a href="robots-txt.html">The robots.txt Standard</a></li><li><a href="rate-limiting.html">Rate Limiting and Politeness</a></li><li><a href="hash-tables.html">Hash Tables</a></li><li><a href="inverted-index.html">The Inverted Index</a></li><li><a href="crawler-faq.html">Crawler FAQ (coming soon)</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

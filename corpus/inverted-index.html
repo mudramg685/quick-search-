@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Inverted Index · QuirkPedia</title>
+<meta name="description" content="The core data structure of search engines: a map from each term to the documents containing it.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#search">Search</a></nav></header>
+<main>
+<article>
+<h1>The Inverted Index</h1>
+<p class="lead">The core data structure of search engines: a map from each term to the documents containing it.</p>
+<h2>From documents to terms</h2>
+<p>A forward index lists the words in each document. An inverted index flips this around: for every term it stores a postings list of the documents that contain it, often with the term frequency and positions.</p>
+<p>To answer a query, the engine looks up each query term and merges the postings lists instead of scanning every document, which makes search fast even over millions of pages.</p>
+<h2>Statistics</h2>
+<p>The document frequency of a term is the length of its postings list. Ranking functions such as TF-IDF and BM25 use document frequency to reward rare, discriminative terms.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="tf-idf.html">TF-IDF Weighting</a></li><li><a href="bm25.html">BM25 Ranking Function</a></li><li><a href="tokenization.html">Tokenization</a></li><li><a href="hash-tables.html">Hash Tables</a></li><li><a href="postgresql.html">PostgreSQL</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>

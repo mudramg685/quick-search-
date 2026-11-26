@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Designing REST APIs · QuirkPedia</title>
+<meta name="description" content="Resources, verbs, status codes and JSON: principles for clean HTTP APIs.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><nav><a href="index.html">QuirkPedia home</a> · <a href="index.html#networks">Networks</a></nav></header>
+<main>
+<article>
+<h1>Designing REST APIs</h1>
+<p class="lead">Resources, verbs, status codes and JSON: principles for clean HTTP APIs.</p>
+<h2>Resources and representations</h2>
+<p>Representational State Transfer models a system as resources identified by URLs. Clients manipulate them with standard HTTP methods and exchange representations, typically JSON documents.</p>
+<p>A search engine API might expose GET /api/search?q=database for queries, GET /api/stats for analytics and POST /api/crawl to start a crawl job.</p>
+<h2>Good practices</h2>
+<p>Validate input and return precise status codes: 400 or 422 for invalid parameters, 404 for missing resources, 409 for conflicts and 429 when a client exceeds a rate limit. Keep endpoints stateless so they scale horizontally behind a load balancer.</p>
+</article>
+<section class="related"><h2>Related articles</h2><ul><li><a href="http-protocol.html">HTTP: The Hypertext Transfer Protocol</a></li><li><a href="rate-limiting.html">Rate Limiting and Politeness</a></li><li><a href="load-balancing.html">Load Balancing</a></li></ul></section>
+</main>
+<footer>QuirkPedia is a sample corpus bundled with QuirkSearch. Text written for educational use.</footer>
+</body>
+</html>
