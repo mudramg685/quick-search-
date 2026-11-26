@@ -19,7 +19,6 @@ from quirksearch.config import get_settings  # noqa: E402
 from quirksearch.db.repository import Repository  # noqa: E402
 from quirksearch.text.stopwords import STOP_WORDS  # noqa: E402
 
-SNIPPET_CHARS = 8_000  # enough text for good snippets while keeping the file small
 
 
 def main() -> None:
@@ -30,7 +29,8 @@ def main() -> None:
     pos = {doc_id: i for i, doc_id in enumerate(ids)}
     rows = repo.fetch_documents(ids)
     with repo.connect() as conn:
-        full = {r[0]: r[1] for r in conn.execute("SELECT id, substr(content, 1, ?) FROM documents", (SNIPPET_CHARS,))}
+        # full text: quoted phrases are verified against the whole page, as on the server
+        full = {r[0]: r[1] or "" for r in conn.execute("SELECT id, content FROM documents")}
         fetched = {r[0]: r[1] for r in conn.execute("SELECT id, fetched_at FROM documents")}
         vocab = {w: [t, f] for w, t, f in conn.execute(
             "SELECT v.word, t.term, v.frequency FROM vocabulary v JOIN terms t ON t.id = v.term_id")}

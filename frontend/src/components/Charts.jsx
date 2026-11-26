@@ -13,7 +13,7 @@ export function useChartColors() {
   const [c, setC] = useState(read);
   useEffect(() => {
     const obs = new MutationObserver(() => setC(read()));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-accent"] });
     return () => obs.disconnect();
   }, []);
   return c;
@@ -23,7 +23,7 @@ function TooltipBox({ active, payload, label, format, labelFormat }) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
   return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-lift">
+    <div className="rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-lift">
       <div className="text-ink-3">{labelFormat ? labelFormat(label, p.payload) : label}</div>
       <div className="mt-0.5 flex items-center gap-2 font-semibold text-ink">
         <span className="h-2 w-2 rounded-full" style={{ background: p.color || p.fill }} />
@@ -47,7 +47,7 @@ export function LatencyChart({ data, format }) {
       <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
         <defs>
           <linearGradient id="lat-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={c.series} stopOpacity={0.28} />
+            <stop offset="0" stopColor={c.series} stopOpacity={0.18} />
             <stop offset="1" stopColor={c.series} stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -93,8 +93,8 @@ export function BarList({ items, valueFormat = (v) => v, emptyText = "No data ye
             <span className="truncate text-ink-2 group-hover:text-ink">{it.label}</span>
             <span className="shrink-0 font-mono text-xs tabular-nums text-ink">{valueFormat(it.value)}</span>
           </div>
-          <div className="mt-1 h-2 rounded-full bg-surface-2">
-            <div className="h-2 rounded-full transition-all duration-700 group-hover:brightness-110"
+          <div className="mt-1 h-1.5 rounded-full bg-surface-2">
+            <div className="h-1.5 rounded-full transition-all duration-700 group-hover:brightness-110"
               style={{ width: `${Math.max(2, (it.value / max) * 100)}%`, background: "var(--series-1)" }} />
           </div>
         </li>

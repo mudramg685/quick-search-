@@ -38,6 +38,7 @@ class SearchResult(BaseModel):
     relevance: float = Field(description="Score relative to the best hit (0–1)")
     matched_terms: int
     query_terms: int
+    coverage: float = Field(description="(1 + matched) / (1 + query terms); multiplies the BM25 sum")
     term_scores: dict[str, float] = Field(description="BM25 contribution of each matched term")
     fetched_at: str
 
@@ -60,6 +61,8 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
     facets: list[Facet]
     did_you_mean: str | None
+    corrected_query: str | None = Field(None, description="Set when the query was auto-corrected")
+    phrases: list[str] = Field(default_factory=list, description="Quoted phrases (stemmed)")
     index_size: int
 
 

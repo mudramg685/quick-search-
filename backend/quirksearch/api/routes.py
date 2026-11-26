@@ -1,7 +1,7 @@
 """REST endpoints (JSON over HTTP).
 
 GET  /api/health              liveness + index summary
-GET  /api/search              ranked search          q, page, page_size, domain
+GET  /api/search              ranked search          q, page, page_size, domain, autocorrect
 GET  /api/suggestions         autocomplete           q, limit
 GET  /api/stats               analytics for the dashboard
 GET  /api/documents           paginated document list (page, page_size, domain)
@@ -51,12 +51,13 @@ def search(request: Request,
            q: str = Query(..., min_length=1, max_length=256, description="Search query"),
            page: int = Query(1, ge=1, le=100),
            page_size: int = Query(10, ge=1, le=50),
-           domain: str | None = Query(None, max_length=253)):
+           domain: str | None = Query(None, max_length=253),
+           autocorrect: bool = Query(True, description="Run the spelling fix when nothing matches")):
     q = q.strip()
     if not q:
         raise HTTPException(status_code=422, detail="Query must contain non-whitespace characters")
     st = _state(request)
-    result = st.engine.search(q, page=page, page_size=page_size, domain=domain)
+    result = st.engine.search(q, page=page, page_size=page_size, domain=domain, autocorrect=autocorrect)
     st.repo.log_search(q, result["normalized_query"] or q.lower(), result["total"], result["took_ms"], page)
     if result["total"] and page == 1:
         st.engine.record_query(result["normalized_query"])

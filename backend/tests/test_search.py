@@ -128,10 +128,43 @@ def test_no_results_and_stopword_only(engine):
 def test_spelling_suggestion(engine):
     assert levenshtein("databse", "database") == 1
     assert levenshtein("kitten", "sitting", limit=5) == 3
-    res = engine.search("databse normalisation")
-    assert res["total"] == 0 or res["did_you_mean"] is None
-    assert engine.search("databse")["did_you_mean"] == "database"
-    assert engine.search("octopsu")["did_you_mean"] == "octopus"
+    # a partial match still suggests the fix for the unknown word
+    res = engine.search("netwrk protocol")
+    assert res["total"] > 0 and res["corrected_query"] is None
+    assert res["did_you_mean"] == "network protocol"
+    assert engine.search("network protocol")["did_you_mean"] is None
+    assert engine.search("databse", autocorrect=False)["did_you_mean"] == "database"
+    assert engine.search("octopsu", autocorrect=False)["did_you_mean"] == "octopus"
+    # operators and quotes survive the correction
+    assert engine.search("+databse -sqlite", autocorrect=False)["did_you_mean"] == "+database -sqlite"
+
+
+def test_autocorrect_runs_the_fixed_query(engine):
+    res = engine.search("octopsu")
+    assert res["corrected_query"] == "octopus" and res["did_you_mean"] is None
+    assert res["query"] == "octopsu" and res["total"] > 0
+    assert slug(res["results"][0]) == "octopus-intelligence"
+    assert engine.search("octopus")["corrected_query"] is None
+
+
+def test_phrase_queries(engine):
+    q = parse_query('"write ahead log" durability')
+    assert q.phrases == [["write", "ahead", "log"]]
+    assert {"write", "ahead", "log"} <= q.required
+    loose = engine.search("ahead log write")
+    exact = engine.search('"write ahead log"')
+    assert 0 < exact["total"] <= loose["total"]
+    assert exact["phrases"] == ["write ahead log"]
+    # word order matters inside quotes
+    assert engine.search('"log ahead write"')["total"] < exact["total"]
+
+
+def test_coverage_rewards_matching_every_term(engine):
+    res = engine.search("python list comprehension", page_size=50)
+    for r in res["results"]:
+        assert r["coverage"] == pytest.approx((1 + r["matched_terms"]) / (1 + r["query_terms"]), abs=1e-4)
+        assert r["score"] == pytest.approx(sum(r["term_scores"].values()) * r["coverage"], abs=2e-3)
+    assert res["results"][0]["matched_terms"] == max(r["matched_terms"] for r in res["results"])
 
 
 def test_snippets_and_highlighting(engine):

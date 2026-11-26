@@ -1,122 +1,85 @@
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ExternalLink, Sigma } from "lucide-react";
 import clsx from "clsx";
 import { Highlight } from "./Highlight";
 import { prettyUrl } from "../lib/format";
+import { useSettings } from "../lib/settings";
 
-// Deterministic tint per domain (hash → hue) so a domain is recognizable across results.
-function domainHue(domain) {
-  let h = 0;
-  for (const ch of domain) h = (h * 31 + ch.charCodeAt(0)) % 360;
-  return h;
-}
-
-export function ResultCard({ result, index }) {
+export function ResultCard({ result }) {
+  const settings = useSettings();
   const [open, setOpen] = useState(false);
   const { host, crumbs } = prettyUrl(result.url);
-  const hue = domainHue(result.domain);
   const pct = Math.round(result.relevance * 100);
   const terms = Object.entries(result.term_scores).sort((a, b) => b[1] - a[1]);
   const maxTerm = Math.max(...terms.map(([, v]) => v), 0.0001);
+  const site = result.domain.replace(/^www\./, "");
+  const linkProps = settings.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {};
+  const bm25 = terms.reduce((s, [, v]) => s + v, 0);
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, delay: Math.min(index, 8) * 0.035, ease: [0.2, 0.7, 0.2, 1] }}
-      className="group rounded-2xl border border-line bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-lift"
-    >
-      <div className="flex items-center gap-2.5 text-sm">
-        <span
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold uppercase text-white"
-          style={{ background: `hsl(${hue} 62% 52%)` }}
-          aria-hidden="true"
-        >
-          {result.domain.replace(/^www\./, "")[0]}
-        </span>
-        <div className="min-w-0 leading-tight">
-          <div className="truncate font-medium text-ink">{host}</div>
-          <div className="truncate text-xs text-ink-3">
-            {[host, ...crumbs].join(" › ")}
+    <article className="group max-w-[640px]">
+      <a href={result.url} {...linkProps} className="focus-ring -mx-1 block rounded px-1" tabIndex={-1} aria-hidden="true">
+        <div className="flex items-center gap-3">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-line bg-surface font-display text-[15px] uppercase leading-none text-ink-2">
+            {site[0]}
+          </span>
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-sm text-ink">{site}</div>
+            <div className="truncate text-xs text-ink-3">{[host, ...crumbs].join(" › ")}</div>
           </div>
         </div>
-        <span className="ml-auto shrink-0 rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-ink-3">#{result.rank}</span>
-      </div>
+      </a>
 
-      <h2 className="mt-3 font-display text-[19px] font-semibold leading-snug tracking-tight">
-        <a
-          href={result.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="focus-ring rounded text-ink decoration-brand/50 underline-offset-4 transition hover:text-brand-ink hover:underline"
-        >
+      <h2 className="mt-1.5 font-read text-[21px] font-normal leading-snug">
+        <a href={result.url} {...linkProps} className="result-title focus-ring rounded-sm underline-offset-[3px] hover:underline">
           <Highlight segments={result.title_segments} fallback={result.title} />
-          <ExternalLink size={14} className="ml-1.5 hidden -translate-y-0.5 opacity-0 transition group-hover:opacity-60 sm:inline" />
         </a>
       </h2>
 
-      <p className="mt-2 text-[15px] leading-relaxed text-ink-2">
+      <p className="mt-1 font-read text-[15.5px] leading-[1.6] text-ink-2">
         <Highlight segments={result.snippet} fallback={result.description} />
       </p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-3">
-        <div className="flex items-center gap-2" title={`Relevance relative to the top result: ${pct}%`}>
-          <span className="font-medium text-ink-2">Relevance</span>
-          <span className="relative h-1.5 w-24 overflow-hidden rounded-full bg-surface-2">
-            <motion.span
-              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand to-brand-2"
-              initial={{ width: 0 }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-            />
+      {settings.details && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
+          <span className="inline-flex items-center gap-1.5" title={`Score relative to the best match: ${pct}%`}>
+            <span className="relative h-[3px] w-12 overflow-hidden rounded-full bg-line" aria-hidden="true">
+              <span className="absolute inset-y-0 left-0 bg-brand" style={{ width: `${pct}%` }} />
+            </span>
+            <span className="tabular-nums">{pct}%</span>
           </span>
-          <span className="tabular-nums text-ink-2">{pct}%</span>
+          <span aria-hidden="true">·</span>
+          <span>{result.matched_terms} of {result.query_terms} {result.query_terms === 1 ? "word" : "words"}</span>
+          <span aria-hidden="true">·</span>
+          <button onClick={() => setOpen((o) => !o)} aria-expanded={open}
+            className="focus-ring rounded underline decoration-line underline-offset-4 transition hover:text-ink hover:decoration-ink-3">
+            {open ? "Hide ranking" : "Why this result?"}
+          </button>
         </div>
-        <span className="tabular-nums">
-          BM25 <span className="font-mono text-ink-2">{result.score.toFixed(2)}</span>
-        </span>
-        <span>
-          matched <span className="font-medium text-ink-2">{result.matched_terms}</span>/{result.query_terms} terms
-        </span>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          className="focus-ring ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-        >
-          <Sigma size={13} /> Why this result?
-          <ChevronDown size={14} className={clsx("transition-transform", open && "rotate-180")} />
-        </button>
-      </div>
+      )}
 
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-4 rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="text-xs text-ink-3">
-                BM25 contribution of each stemmed query term (sums to the total score):
-              </p>
-              <ul className="mt-3 space-y-2">
-                {terms.map(([term, v]) => (
-                  <li key={term} className="grid grid-cols-[6.5rem_1fr_3.5rem] items-center gap-3 text-xs">
-                    <code className="truncate font-mono text-ink">{term}</code>
-                    <span className="h-1.5 overflow-hidden rounded-full bg-surface">
-                      <span className="block h-full rounded-full" style={{ width: `${(v / maxTerm) * 100}%`, background: "var(--series-1)" }} />
-                    </span>
-                    <span className="text-right font-mono tabular-nums text-ink-2">{v.toFixed(3)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.article>
+      {open && settings.details && (
+        <div className="fade-in mt-3 border-l-2 border-brand/60 pl-4">
+          <p className="font-read text-[14px] italic text-ink-2">
+            BM25 {bm25.toFixed(2)} × coverage {result.coverage?.toFixed(2) ?? "1.00"} ={" "}
+            <span className="not-italic text-ink tabular-nums">{result.score.toFixed(2)}</span>
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {terms.map(([term, v]) => (
+              <li key={term} className="grid grid-cols-[7rem_1fr_3.25rem] items-center gap-3 text-xs">
+                <code className="truncate font-mono text-ink-2">{term}</code>
+                <span className="h-[5px] overflow-hidden rounded-full bg-surface-2">
+                  <span className="block h-full rounded-full bg-brand" style={{ width: `${(v / maxTerm) * 100}%` }} />
+                </span>
+                <span className="text-right font-mono tabular-nums text-ink-2">{v.toFixed(3)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs leading-relaxed text-ink-3">
+            Each word adds its BM25 weight; coverage = (1 + words matched) / (1 + words in query), so pages that contain your whole
+            query rise above ones that repeat a single word.
+          </p>
+        </div>
+      )}
+    </article>
   );
 }

@@ -24,13 +24,13 @@ indexed and ranked by this code.
 | **Crawler** | Concurrent BFS over the link graph · robots.txt (RFC 9309) + Crawl-delay · per-host rate limiting · connect/read timeouts · redirects · 2 MB cap · URL canonicalization (RFC 3986, IDNA) · SHA-256 duplicate detection · `noindex`/`nofollow` · typed error log |
 | **Text processing** | Unicode normalization · tokenizer · stop words · **Porter stemmer written from the 1980 paper** · title/heading field weights |
 | **Index & database** | Hash-map inverted index (term → {doc: tf}) · 10-table 3NF SQLite schema with PK/FK/CHECK constraints · triggers keep document frequencies exact · one ACID transaction per page · WAL · incremental re-indexing |
-| **Search** | BM25 (k₁ = 1.2, b = 0.75) · heap Top-K · pagination · `+must`, `-exclude`, `site:` operators · domain facets · highlighted best-window snippets · "Why this result?" per-term score breakdown · "Did you mean" (Levenshtein) · trie autocomplete |
+| **Search** | BM25 (k₁ = 1.2, b = 0.75) × query-coverage factor · heap Top-K · pagination · `"exact phrase"`, `+must`, `-exclude`, `site:` operators · domain facets · highlighted best-window snippets · "Why this result?" per-term score breakdown · automatic spelling correction ("Showing results for … / Search instead for …") and "Did you mean" (Levenshtein) · trie autocomplete |
 | **API** | 11 REST endpoints · validation · JSON errors · token-bucket rate limiting (429) · background crawl jobs · OpenAPI docs at `/docs` |
-| **UI** | Landing page · results page · analytics dashboard with charts and live crawl control · light/dark themes · mobile layouts · skeleton/empty/error states |
+| **UI** | Quiet editorial design (paper & ink, serif reading type) · home, results and analytics dashboard · **Settings panel**: light/dark/auto theme, six accent colours, serif/sans reading font, text size, results per page, open in new tab, suggestions, auto-correct, ranking details · search history with per-item removal · "I'm feeling curious" · numbered pagination · related searches · mobile layouts |
 
 **Measured on the running system** (72 pages, 3,998 terms; see `docs/benchmarks.json`):
 retrieval + ranking **0.14 ms** mean · full search with snippets **16 ms** median · HTTP end-to-end
-**35 ms** median · inverted index **≈4,800×** faster than a linear scan · **152 tests, 94 % coverage**.
+**35 ms** median · inverted index **≈4,800×** faster than a linear scan · **155 tests, 94 % coverage**.
 
 ## Prerequisites
 
@@ -105,14 +105,19 @@ Type in the search box (press <kbd>/</kbd> anywhere to focus it), or call the AP
 curl "http://127.0.0.1:8000/api/search?q=bm25+ranking&page=1&page_size=10"
 ```
 
-Query syntax: `write ahead log` (ranked OR) · `+heap sorting` (must contain *heap*) ·
-`database -sqlite` (exclude) · `transactions site:www.sqlite.org` (restrict domain).
+Query syntax: `write ahead log` (ranked; pages containing every word rank higher) · `"write ahead log"`
+(exact phrase) · `+heap sorting` (must contain *heap*) · `database -sqlite` (exclude) ·
+`transactions site:www.sqlite.org` (restrict domain). Misspelled queries with no matches are
+corrected automatically (`autocorrect=false` turns that off).
+
+Ranking: the BM25 sum is multiplied by **coverage = (1 + words matched) / (1 + words in query)**,
+so a page containing the whole query beats one that repeats a single rare word.
 
 ## API endpoints
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/search?q=&page=&page_size=&domain=` | Ranked results, facets, timing, spelling suggestion |
+| GET | `/api/search?q=&page=&page_size=&domain=&autocorrect=` | Ranked results, facets, timing, spelling correction |
 | GET | `/api/suggestions?q=&limit=` | Autocomplete |
 | GET | `/api/stats` | Analytics for the dashboard |
 | GET | `/api/documents?page=&page_size=&domain=` | Indexed documents |
@@ -131,6 +136,8 @@ Query syntax: `write ahead log` (ranked OR) · `+heap sorting` (must contain *he
 | ![Results](docs/screenshots/results-light.png) | ![Dashboard](docs/screenshots/dashboard-dark.png) |
 | **"Why this result?"** | **Mobile** |
 | ![Explain](docs/screenshots/results-explain-light.png) | <img src="docs/screenshots/mobile-results.png" width="260"> |
+| **Auto-correct** | **Settings** |
+| ![Auto-correct](docs/screenshots/results-autocorrect-light.png) | ![Settings](docs/screenshots/settings-light.png) |
 
 All screenshots are captured from the running app by `backend/scripts/screenshots.py` (Playwright).
 
@@ -164,7 +171,7 @@ More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the PDF report.
 
 ```bash
 cd backend
-pytest --cov=quirksearch            # 152 tests (crawler tests use a real localhost HTTP server)
+pytest --cov=quirksearch            # 155 tests (crawler tests use a real localhost HTTP server)
 python scripts/benchmark.py         # writes docs/benchmarks.json (needs the server for HTTP figures)
 python scripts/screenshots.py       # refreshes docs/screenshots (needs: pip install playwright && playwright install chromium)
 python ../docs/report/build_report.py   # rebuilds the PDF report from real test/benchmark data
@@ -172,7 +179,7 @@ python ../docs/report/build_report.py   # rebuilds the PDF report from real test
 
 ## Limitations
 
-No phrase/proximity search (positions are not stored), no JavaScript rendering, English-only
+Phrases are verified by re-scanning candidate pages (positions are not stored in the index), no proximity ranking, no JavaScript rendering, English-only
 analysis, exact (not near-) duplicate detection, single-node SQLite. See §25–26 of the report for
 details and planned enhancements (PageRank over the stored link graph, positional index, PostgreSQL,
 Docker packaging).

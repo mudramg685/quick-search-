@@ -1,59 +1,66 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, CornerDownLeft, Search, Sparkles, X } from "lucide-react";
+import { Clock, Search, X } from "lucide-react";
 import clsx from "clsx";
 import { api } from "../lib/api";
+import { removeHistory, useHistory, useSettings } from "../lib/settings";
 
 /**
- * Search input with debounced autocomplete (trie-backed /api/suggestions).
- * Keyboard: ↑/↓ to move, Enter to search, Esc to close, "/" anywhere to focus.
- * Implements the WAI-ARIA combobox pattern for screen readers.
+ * Search input with recent searches (when empty) and debounced autocomplete (trie-backed).
+ * Keyboard: ↑/↓ move, Enter search, Esc close, "/" anywhere focuses it.
+ * Implements the WAI-ARIA combobox pattern.
  */
-export function SearchBox({ initial = "", onSearch, size = "md", autoFocus = false }) {
+export function SearchBox({ initial = "", onSearch, size = "md", autoFocus = false, inputRef: externalRef }) {
+  const settings = useSettings();
+  const history = useHistory();
   const [value, setValue] = useState(initial);
-  const [items, setItems] = useState([]);
+  const [remote, setRemote] = useState([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const inputRef = useRef(null);
+  const ownRef = useRef(null);
+  const inputRef = externalRef || ownRef;
   const listId = useId();
   const big = size === "lg";
 
   useEffect(() => setValue(initial), [initial]);
 
-  // "/" focuses the search box from anywhere on the page
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+      const tag = document.activeElement?.tagName;
+      if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA" && !document.querySelector("[role=dialog]")) {
         e.preventDefault();
         inputRef.current?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [inputRef]);
 
   // Debounced suggestions; aborts stale requests so out-of-order responses can't win.
   useEffect(() => {
     const q = value.trim();
-    if (!q || q === initial.trim()) {
-      setItems([]);
+    if (!q || q === initial.trim() || !settings.suggest) {
+      setRemote([]);
       return;
     }
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      api
-        .suggestions(q, ctrl.signal)
-        .then((d) => {
-          setItems(d.suggestions);
-          setActive(-1);
-        })
-        .catch(() => {});
-    }, 120);
+      api.suggestions(q, ctrl.signal).then((d) => setRemote(d.suggestions)).catch(() => {});
+    }, 110);
     return () => {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [value, initial]);
+  }, [value, initial, settings.suggest]);
+
+  // Recent searches first (matching what's typed), then index suggestions.
+  const typed = value.trim().toLowerCase();
+  const recent = history.filter((h) => (typed ? h.toLowerCase().startsWith(typed) && h.toLowerCase() !== typed : true)).slice(0, typed ? 3 : 7);
+  const items = [
+    ...recent.map((text) => ({ text, recent: true })),
+    ...(typed ? remote.filter((s) => !recent.some((r) => r.toLowerCase() === s)).map((text) => ({ text, recent: false })) : []),
+  ].slice(0, 9);
+
+  useEffect(() => setActive(-1), [value, remote.length]);
 
   const submit = (q) => {
     const query = (q ?? value).trim();
@@ -77,7 +84,7 @@ export function SearchBox({ initial = "", onSearch, size = "md", autoFocus = fal
       setActive((a) => (a <= 0 ? items.length - 1 : a - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      submit(active >= 0 && open ? items[active] : undefined);
+      submit(active >= 0 && open ? items[active].text : undefined);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -94,12 +101,12 @@ export function SearchBox({ initial = "", onSearch, size = "md", autoFocus = fal
           submit();
         }}
         className={clsx(
-          "group relative flex items-center rounded-2xl border bg-surface transition-all duration-300",
-          big ? "h-16 pl-5 pr-2 shadow-lift sm:h-[68px]" : "h-11 pl-3.5 pr-1.5 shadow-soft",
-          "border-line focus-within:border-brand/50 focus-within:shadow-glow",
+          "relative flex items-center border bg-surface transition-[box-shadow,border-color,border-radius] duration-150",
+          big ? "h-[54px] pl-5 pr-2" : "h-11 pl-4 pr-1.5",
+          showList ? "rounded-t-[27px] border-line border-b-transparent shadow-lift" : "rounded-full border-line hover:shadow-soft focus-within:shadow-soft",
         )}
       >
-        <Search className={clsx("shrink-0 text-ink-3 transition group-focus-within:text-brand", big ? "h-5 w-5" : "h-4 w-4")} />
+        <Search className="shrink-0 text-ink-3" size={big ? 19 : 17} strokeWidth={1.75} aria-hidden="true" />
         <input
           ref={inputRef}
           value={value}
@@ -112,83 +119,87 @@ export function SearchBox({ initial = "", onSearch, size = "md", autoFocus = fal
           onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={onKeyDown}
           maxLength={256}
-          placeholder={big ? "Ask the index anything — try “bm25 ranking”" : "Search the index…"}
+          placeholder={big ? "Search the index, or try \"write ahead log\"" : "Search"}
           aria-label="Search query"
           role="combobox"
           aria-expanded={showList}
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          className={clsx(
-            "min-w-0 flex-1 bg-transparent px-3 text-ink placeholder:text-ink-3 focus:outline-none",
-            big ? "text-lg" : "text-[15px]",
-          )}
+          autoComplete="off"
+          spellCheck={false}
+          className={clsx("min-w-0 flex-1 bg-transparent px-3 text-ink placeholder:text-ink-3 focus:outline-none", big ? "text-[17px]" : "text-[15px]")}
         />
-        {value && (
+        {value ? (
           <button
             type="button"
             onClick={() => {
               setValue("");
+              setOpen(true);
               inputRef.current?.focus();
             }}
-            className="focus-ring mr-1 grid h-8 w-8 place-items-center rounded-lg text-ink-3 transition hover:bg-surface-2 hover:text-ink"
+            className="focus-ring grid h-8 w-8 place-items-center rounded-full text-ink-3 transition hover:text-ink"
             aria-label="Clear search"
           >
-            <X size={16} />
+            <X size={17} strokeWidth={1.75} />
+          </button>
+        ) : (
+          big && <kbd className="mr-3 hidden rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-ink-3 sm:block">/</kbd>
+        )}
+        {!big && (
+          <button type="submit" aria-label="Search"
+            className="focus-ring ml-1 grid h-8 w-8 place-items-center rounded-full text-brand transition hover:bg-surface-2">
+            <Search size={17} strokeWidth={2} />
           </button>
         )}
-        {!value && big && (
-          <kbd className="mr-2 hidden rounded-md border border-line px-1.5 py-0.5 font-mono text-xs text-ink-3 sm:block">/</kbd>
-        )}
-        <button
-          type="submit"
-          className={clsx(
-            "focus-ring inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-2 font-semibold text-white transition hover:brightness-110 active:scale-[0.97]",
-            big ? "h-12 px-5 text-[15px]" : "h-8 px-3 text-sm",
-          )}
-        >
-          <span className={clsx(!big && "hidden sm:inline")}>Search</span>
-          <ArrowRight size={big ? 18 : 15} />
-        </button>
       </form>
 
-      <AnimatePresence>
-        {showList && (
-          <motion.ul
-            id={listId}
-            role="listbox"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.14 }}
-            className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-lift"
-          >
-            {items.map((s, i) => (
-              <li
-                key={s}
-                id={`${listId}-${i}`}
-                role="option"
-                aria-selected={i === active}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  submit(s);
-                }}
-                onMouseEnter={() => setActive(i)}
-                className={clsx(
-                  "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition",
-                  i === active ? "bg-surface-2 text-ink" : "text-ink-2",
-                )}
-              >
-                <Sparkles size={15} className="shrink-0 text-brand" />
-                <span className="flex-1 truncate">
-                  <SuggestionText suggestion={s} typed={value} />
-                </span>
-                {i === active && <CornerDownLeft size={14} className="text-ink-3" />}
-              </li>
-            ))}
-          </motion.ul>
-        )}
-      </AnimatePresence>
+      {showList && (
+        <ul
+          id={listId}
+          role="listbox"
+          className={clsx(
+            "absolute left-0 right-0 top-full z-40 overflow-hidden rounded-b-[27px] border border-t-0 border-line bg-surface pb-3 shadow-lift",
+          )}
+        >
+          <li aria-hidden="true" className="mx-5 mb-2 border-t border-line" />
+          {items.map((it, i) => (
+            <li
+              key={(it.recent ? "h:" : "s:") + it.text}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                submit(it.text);
+              }}
+              onMouseEnter={() => setActive(i)}
+              className={clsx("group flex cursor-pointer items-center gap-3.5 px-5 py-[7px] text-[15px]", i === active ? "bg-surface-2" : "")}
+            >
+              {it.recent
+                ? <Clock size={16} strokeWidth={1.75} className="shrink-0 text-ink-3" aria-hidden="true" />
+                : <Search size={16} strokeWidth={1.75} className="shrink-0 text-ink-3" aria-hidden="true" />}
+              <span className={clsx("flex-1 truncate", it.recent ? "text-[rgb(var(--visited))]" : "text-ink")}>
+                <SuggestionText suggestion={it.text} typed={value} />
+              </span>
+              {it.recent && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeHistory(it.text);
+                  }}
+                  className="rounded px-1.5 text-xs text-ink-3 opacity-0 transition hover:text-ink hover:underline group-hover:opacity-100 group-aria-selected:opacity-100"
+                  aria-label={`Remove "${it.text}" from history`}
+                >
+                  Remove
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -196,11 +207,11 @@ export function SearchBox({ initial = "", onSearch, size = "md", autoFocus = fal
 // Typed prefix in regular weight, completion in bold – the conventional autocomplete look.
 function SuggestionText({ suggestion, typed }) {
   const t = typed.trim().toLowerCase();
-  if (t && suggestion.startsWith(t)) {
+  if (t && suggestion.toLowerCase().startsWith(t)) {
     return (
       <>
         {suggestion.slice(0, t.length)}
-        <strong className="font-semibold text-ink">{suggestion.slice(t.length)}</strong>
+        <strong className="font-semibold">{suggestion.slice(t.length)}</strong>
       </>
     );
   }

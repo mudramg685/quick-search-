@@ -31,7 +31,7 @@ def main() -> int:
     def shot(page, name, full=False):
         if only and name not in only:
             return
-        page.wait_for_timeout(900)  # let entrance animations settle
+        page.wait_for_timeout(700)  # let fonts and transitions settle
         page.screenshot(path=str(out / f"{name}.png"), full_page=full)
         print("saved", name)
 
@@ -39,13 +39,13 @@ def main() -> int:
         browser = p.chromium.launch()
         for theme in ("light", "dark"):
             ctx = browser.new_context(viewport=DESKTOP, device_scale_factor=1, color_scheme=theme)
-            ctx.add_init_script(f"localStorage.setItem('qs-theme', '{theme}')")
+            ctx.add_init_script(f"""localStorage.setItem('qs-settings', JSON.stringify({{theme: '{theme}'}}))""")
             page = ctx.new_page()
             page.on("console", lambda m: m.type == "error" and errors.append(f"{m.text}"))
             page.on("pageerror", lambda e: errors.append(str(e)))
 
             page.goto(args.base + "/")
-            page.wait_for_selector("text=pages indexed")
+            page.wait_for_selector("text=terms")
             page.wait_for_function("!document.querySelector('.skeleton')")
             shot(page, f"home-{theme}")
 
@@ -61,9 +61,13 @@ def main() -> int:
                 page.click("text=Why this result? >> nth=0")
                 page.wait_for_timeout(400)
                 shot(page, "results-explain-light")
-                page.goto(args.base + "/search?q=databse")
-                page.wait_for_selector("text=Did you mean")
-                shot(page, "results-empty-light")
+                page.goto(args.base + "/search?q=databse%20indx")
+                page.wait_for_selector("text=Showing results for")
+                shot(page, "results-autocorrect-light")
+                page.click("[aria-label=Settings]")
+                page.wait_for_selector("text=Accent colour")
+                shot(page, "settings-light")
+                page.keyboard.press("Escape")
 
             page.goto(args.base + "/dashboard")
             page.wait_for_selector("text=Index analytics")
@@ -73,11 +77,11 @@ def main() -> int:
             ctx.close()
 
         ctx = browser.new_context(viewport=MOBILE, device_scale_factor=2, color_scheme="light", is_mobile=True, has_touch=True)
-        ctx.add_init_script("localStorage.setItem('qs-theme', 'light')")
+        ctx.add_init_script("localStorage.setItem('qs-settings', JSON.stringify({theme: 'light'}))")
         page = ctx.new_page()
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto(args.base + "/")
-        page.wait_for_selector("text=pages indexed")
+        page.wait_for_selector("text=terms")
         page.wait_for_function("!document.querySelector('.skeleton')")
         shot(page, "mobile-home", full=True)
         page.goto(args.base + "/search?q=bm25%20ranking")

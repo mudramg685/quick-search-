@@ -229,6 +229,15 @@ class Repository:
                 out.update({r["id"]: dict(r) for r in conn.execute(q, chunk)})
         return out
 
+    def fetch_texts(self, ids: list[int]) -> dict[int, tuple[str, str]]:
+        """Full title + content, used to verify quoted phrases on the candidate set only."""
+        out: dict[int, tuple[str, str]] = {}
+        with self.connect() as conn:
+            for chunk in _chunks(ids):
+                q = f"SELECT id, title, content FROM documents WHERE id IN ({','.join('?' * len(chunk))})"
+                out.update({r[0]: (r[1] or "", r[2] or "") for r in conn.execute(q, chunk)})
+        return out
+
     def get_document(self, doc_id: int) -> dict | None:
         with self.connect() as conn:
             doc = _row(conn.execute(

@@ -2,100 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ------------------------------------------------------------------ design tokens */
+/* ------------------------------------------------------------------ design tokens
+   Paper & ink. One accent colour (user-selectable), hairline rules, a serif for reading.
+   Triplets so Tailwind can apply alpha: rgb(var(--ink) / 0.5). */
 :root {
   color-scheme: light;
-  --bg: 250 250 248;
-  --surface: 255 255 255;
-  --surface-2: 244 243 240;
-  --line: 228 227 222;
-  --ink: 17 17 20;
-  --ink-2: 82 81 78;
-  --ink-3: 112 111 106;
-  --brand: 109 93 252;
-  --brand-2: 240 96 158;
-  --brand-ink: 82 65 224;
-  /* chart tokens (validated reference palette, light steps) */
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --chart-grid: #e7e6e1;
-  --chart-axis: #706f6a;
-  --status-good: #0ca30c;
-  --status-critical: #d03b3b;
-  --status-warning: #b07a00;
+  --bg: 247 244 238;
+  --surface: 252 250 246;
+  --surface-2: 239 235 227;
+  --line: 222 216 205;
+  --ink: 28 26 23;
+  --ink-2: 72 68 61;
+  --ink-3: 109 103 93;
+  --visited: 104 76 120;
+  --on-brand: 255 255 255;
+  --font-read: "Newsreader", "Iowan Old Style", Georgia, serif;
+
+  /* accent – vermilion by default */
+  --brand: 168 64 31;
+  --series-1: #a8401f;
+
+  --chart-grid: #e4dfd5;
+  --chart-axis: #6d675d;
+  --status-good: #2f7d32;
+  --status-critical: #b3261e;
+  --status-warning: #8a5a08;
 }
+:root[data-accent="ink"]      { --brand: 43 76 126;  --series-1: #2b4c7e; }
+:root[data-accent="moss"]     { --brand: 71 107 46;  --series-1: #476b2e; }
+:root[data-accent="plum"]     { --brand: 125 58 104; --series-1: #7d3a68; }
+:root[data-accent="ochre"]    { --brand: 138 90 8;   --series-1: #8a5a08; }
+:root[data-accent="graphite"] { --brand: 42 39 35;   --series-1: #2a2723; }
+
 .dark {
   color-scheme: dark;
-  --bg: 11 11 14;
-  --surface: 20 20 24;
-  --surface-2: 28 28 33;
-  --line: 44 44 50;
-  --ink: 240 239 236;
-  --ink-2: 195 194 183;
-  --ink-3: 150 149 142;
-  --brand: 139 125 255;
-  --brand-2: 255 122 180;
-  --brand-ink: 176 166 255;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --chart-grid: #2a2a2f;
-  --chart-axis: #96958e;
-  --status-good: #22b922;
-  --status-critical: #e66767;
-  --status-warning: #fab219;
+  --bg: 22 21 19;
+  --surface: 29 28 25;
+  --surface-2: 38 36 33;
+  --line: 54 51 47;
+  --ink: 236 231 222;
+  --ink-2: 196 189 177;
+  --ink-3: 150 143 132;
+  --visited: 190 168 205;
+  --on-brand: 22 21 19;
+
+  --brand: 232 135 95;
+  --series-1: #e8875f;
+
+  --chart-grid: #34312d;
+  --chart-axis: #968f84;
+  --status-good: #6fbf73;
+  --status-critical: #ef7a70;
+  --status-warning: #e0b25a;
 }
+.dark[data-accent="ink"]      { --brand: 147 180 230; --series-1: #93b4e6; }
+.dark[data-accent="moss"]     { --brand: 169 197 127; --series-1: #a9c57f; }
+.dark[data-accent="plum"]     { --brand: 217 160 200; --series-1: #d9a0c8; }
+.dark[data-accent="ochre"]    { --brand: 224 178 90;  --series-1: #e0b25a; }
+.dark[data-accent="graphite"] { --brand: 233 228 218; --series-1: #e9e4da; }
+
+:root[data-font="sans"] { --font-read: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+:root[data-size="s"] { font-size: 15px; }
+:root[data-size="l"] { font-size: 17.5px; }
 
 html, body, #root { min-height: 100%; }
 body {
   @apply bg-bg text-ink font-sans antialiased;
-  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
-::selection { background: rgb(var(--brand) / 0.25); }
-
-/* Search-term highlight inside snippets/titles */
-mark.qs-hl {
-  color: inherit;
-  font-weight: 600;
-  background: linear-gradient(transparent 55%, rgb(var(--brand) / 0.28) 55%);
-  border-radius: 2px;
-  padding: 0 1px;
-}
-
-.text-gradient {
-  background: linear-gradient(100deg, rgb(var(--brand)) 10%, rgb(var(--brand-2)) 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.glass {
-  background: rgb(var(--surface) / 0.72);
-  backdrop-filter: saturate(160%) blur(16px);
-  -webkit-backdrop-filter: saturate(160%) blur(16px);
-}
-
-.grid-bg {
-  background-image:
-    linear-gradient(rgb(var(--ink) / 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--ink) / 0.045) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 30%, transparent 75%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, black 30%, transparent 75%);
-}
-
-.skeleton {
-  @apply relative overflow-hidden rounded-md bg-surface-2;
-}
-.skeleton::after {
+/* faint paper grain – printed matter, not a screen gradient */
+body::before {
   content: "";
-  position: absolute; inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgb(var(--ink) / 0.06), transparent);
-  animation: shimmer 1.6s infinite;
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
-@keyframes shimmer { 100% { transform: translateX(100%); } }
+.dark body::before { opacity: 0.07; mix-blend-mode: screen; filter: invert(1); }
+#root { position: relative; z-index: 1; }
 
-.focus-ring { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg; }
+::selection { background: rgb(var(--brand) / 0.22); }
+
+/* Search-term highlight: bold, the way a careful editor would mark it */
+mark.qs-hl { color: inherit; background: none; font-weight: 600; }
+
+.result-title { color: rgb(var(--brand)); }
+.result-title:visited { color: rgb(var(--visited)); }
+
+.rule { border-color: rgb(var(--line)); }
+.smallcaps { font-variant-caps: all-small-caps; letter-spacing: 0.06em; }
+
+.skeleton { @apply rounded bg-surface-2; animation: breathe 1.8s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.55; } }
+
+.focus-ring { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg; }
+
+.drawer-in { animation: drawer-in 220ms cubic-bezier(.2,.7,.2,1); }
+@keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } }
+.fade-in { animation: fade-in 200ms ease-out; }
+@keyframes fade-in { from { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }

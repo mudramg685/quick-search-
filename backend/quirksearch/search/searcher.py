@@ -5,6 +5,12 @@ Query language (small but useful):
     +required term          "+" forces a term to appear (AND for that term)
     -excluded               documents containing the term are dropped
     site:example.com        restrict to a domain (or pass ``domain=``)
+    "write ahead log"       exact phrase: the stemmed words must appear consecutively
+
+Ranking is BM25 times a *coverage* factor (1 + matched) / (1 + |query terms|), so a page
+that contains every query word beats one that repeats a single rare word (Lucene's classic
+"coord" idea, smoothed). When nothing matches and a spelling fix exists, the corrected query
+is run automatically (``autocorrect``) - the response says so in ``corrected_query``.
 
 Retrieval is *term-at-a-time*: for each query term we walk its postings list once and
 add that term's BM25 contribution into a score accumulator (a hash map doc_id → score).
@@ -32,6 +38,8 @@ from .bm25 import idf, term_score
 from .snippets import highlight, make_snippet
 
 _SITE = re.compile(r"\bsite:([^\s]+)", re.I)
+# a chunk is either an (optionally +/-) quoted phrase or a run of non-space characters
+_CHUNK = re.compile(r'([+-]?)"([^"]*)"?|(\S+)')
 
 
 @dataclass
@@ -42,6 +50,7 @@ class ParsedQuery:
     excluded: set[str] = field(default_factory=set)
     domain: str | None = None
     words: list[str] = field(default_factory=list)  # surface words (for spelling suggestions)
+    phrases: list[list[str]] = field(default_factory=list)  # quoted phrases as stemmed term lists
 
     @property
     def normalized(self) -> str:
@@ -57,10 +66,15 @@ def parse_query(raw: str) -> ParsedQuery:
     else:
         raw_wo_site = raw
     terms: list[str] = []
-    required, excluded, words = set(), set(), []
-    for chunk in raw_wo_site.split():
-        prefix = chunk[0] if chunk[0] in "+-" and len(chunk) > 1 else ""
-        body = chunk[1:] if prefix else chunk
+    required, excluded, words, phrases = set(), set(), [], []
+    for m in _CHUNK.finditer(raw_wo_site):
+        if m.group(3) is not None:
+            chunk = m.group(3)
+            prefix = chunk[0] if chunk[0] in "+-" and len(chunk) > 1 else ""
+            body, quoted = (chunk[1:] if prefix else chunk), False
+        else:
+            prefix, body, quoted = m.group(1), m.group(2), True
+        phrase: list[str] = []
         for tok in tokenize(body):
             if not is_indexable(tok):
                 continue
@@ -69,11 +83,41 @@ def parse_query(raw: str) -> ParsedQuery:
                 excluded.add(t)
                 continue
             words.append(tok)
-            if prefix == "+":
+            phrase.append(t)
+            if prefix == "+" or quoted:
                 required.add(t)
             if t not in terms:
                 terms.append(t)
-    return ParsedQuery(raw=raw, terms=terms, required=required, excluded=excluded, domain=domain, words=words)
+        if quoted and len(phrase) > 1:
+            phrases.append(phrase)
+    return ParsedQuery(raw=raw, terms=terms, required=required, excluded=excluded, domain=domain, words=words,
+                       phrases=phrases)
+
+
+def coverage(matched: int, n_terms: int) -> float:
+    """Smoothed share of query terms a page contains: 1.0 when it has all of them."""
+    return (1 + matched) / (1 + n_terms) if n_terms else 1.0
+
+
+def term_sequence(text: str) -> list[str]:
+    """The stemmed, indexable token stream of a text - what a phrase is matched against."""
+    return [stem(t) for t in tokenize(text) if is_indexable(t)]
+
+
+def contains_phrase(seq: list[str], phrase: list[str]) -> bool:
+    n, first = len(phrase), phrase[0]
+    return any(seq[i] == first and seq[i:i + n] == phrase for i in range(len(seq) - n + 1))
+
+
+def replace_words(raw: str, fixes: dict[str, str]) -> str | None:
+    """Swap misspelled words inside the raw query, keeping operators, quotes and site:."""
+    out = raw
+    for wrong, right in fixes.items():
+        new = re.sub(rf"(?<!\w){re.escape(wrong)}(?!\w)", right, out, flags=re.I)
+        if new == out:
+            return None
+        out = new
+    return out
 
 
 def levenshtein(a: str, b: str, limit: int = 2) -> int:
@@ -123,7 +167,8 @@ class SearchEngine:
             return (time.perf_counter() - t0) * 1000
 
     # ------------------------------------------------------------------ search
-    def search(self, raw_query: str, page: int = 1, page_size: int = 10, domain: str | None = None) -> dict:
+    def search(self, raw_query: str, page: int = 1, page_size: int = 10, domain: str | None = None,
+               autocorrect: bool = True) -> dict:
         t0 = time.perf_counter()
         snap = self.snapshot
         idx = snap.index
@@ -149,7 +194,16 @@ class SearchEngine:
                 return False
             return True
 
-        candidates = {d: s for d, s in scores.items() if allowed(d)}
+        candidates = {d: s * coverage(matched[d], len(q.terms)) for d, s in scores.items() if allowed(d)}
+        if q.phrases and candidates:
+            texts = self.repo.fetch_texts(list(candidates))
+
+            def has_phrases(doc_id: int) -> bool:
+                title, content = texts.get(doc_id, ("", ""))
+                seqs = (term_sequence(title), term_sequence(content))
+                return all(any(contains_phrase(seq, ph) for seq in seqs) for ph in q.phrases)
+
+            candidates = {d: s for d, s in candidates.items() if has_phrases(d)}
         facets = Counter(snap.doc_domain.get(d, "?") for d in candidates)
         if domain:
             candidates = {d: s for d, s in candidates.items()
@@ -186,9 +240,19 @@ class SearchEngine:
                 "relevance": round(score / max_score, 4) if max_score else 0.0,
                 "matched_terms": matched.get(doc_id, 0),
                 "query_terms": len(q.terms),
+                "coverage": round(coverage(matched.get(doc_id, 0), len(q.terms)), 4),
                 "term_scores": breakdown,
                 "fetched_at": doc["fetched_at"],
             })
+
+        # unknown words get a suggestion even when other words matched ("netwrk protocol")
+        did_you_mean = self.spelling_suggestion(q)
+        if did_you_mean and autocorrect and not candidates:
+            fixed = self.search(did_you_mean, page, page_size, domain, autocorrect=False)
+            if fixed["total"]:
+                fixed.update(query=raw_query, corrected_query=did_you_mean, did_you_mean=None,
+                             took_ms=round((time.perf_counter() - t0) * 1000, 3))
+                return fixed
 
         took_ms = (time.perf_counter() - t0) * 1000
         return {
@@ -203,7 +267,9 @@ class SearchEngine:
             "took_ms": round(took_ms, 3),
             "results": results,
             "facets": [{"domain": d, "count": c} for d, c in facets.most_common(10)],
-            "did_you_mean": self.spelling_suggestion(q) if not candidates else None,
+            "did_you_mean": did_you_mean,
+            "corrected_query": None,
+            "phrases": [" ".join(p) for p in q.phrases],
             "index_size": n_docs,
         }
 
@@ -228,12 +294,10 @@ class SearchEngine:
     def spelling_suggestion(self, q: ParsedQuery) -> str | None:
         if not q.words:
             return None
-        changed, out = False, []
-        for w in q.words:
-            fix = self._correct_word(w)
-            out.append(fix or w)
-            changed |= bool(fix)
-        return " ".join(out) if changed else None
+        fixes = {w: f for w in dict.fromkeys(q.words) if (f := self._correct_word(w))}
+        if not fixes:
+            return None
+        return replace_words(q.raw, fixes) or " ".join(fixes.get(w, w) for w in q.words)
 
     def suggest(self, prefix: str, limit: int = 8) -> list[str]:
         text = normalize(prefix).strip()

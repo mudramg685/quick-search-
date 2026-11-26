@@ -1,155 +1,120 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowUpRight, Boxes, Database, Network, Orbit, Sparkles, Telescope, Timer } from "lucide-react";
-import { Background } from "../components/Background";
-import { LogoMark } from "../components/Logo";
+import { Link, useNavigate } from "react-router-dom";
+import { LogoMark, Wordmark } from "../components/Logo";
 import { SearchBox } from "../components/SearchBox";
-import { ThemeToggle } from "../components/TopBar";
-import { STATIC, api } from "../lib/api";
+import { SettingsButton } from "../components/TopBar";
+import { REPO_URL, STATIC, api } from "../lib/api";
 import { fmtInt, fmtMs } from "../lib/format";
+import { addHistory, getSettings } from "../lib/settings";
 
-const SUGGESTED = ["bm25 ranking", "tcp handshake", "inverted index", "write ahead log", "python list comprehension", "octopus"];
-
-const TOPICS = [
-  { title: "Computer Networks", icon: Network, query: "http tcp dns protocol", blurb: "HTTP, TCP, DNS, TLS and the art of polite crawling." },
-  { title: "Databases", icon: Database, query: "database transactions index", blurb: "Normalization, B-trees, ACID and query planners." },
-  { title: "Algorithms", icon: Boxes, query: "heap trie hash table graph", blurb: "Hash maps, tries, heaps and graph traversal." },
-  { title: "Search Engines", icon: Telescope, query: "inverted index ranking", blurb: "Crawlers, inverted indexes, TF-IDF and BM25." },
-  { title: "Curiosities", icon: Orbit, query: "octopus black holes sourdough", blurb: "Octopus brains, black holes and wild yeast." },
+const WANDER = [
+  ["networks", "http tcp dns protocol"],
+  ["databases", "database transactions index"],
+  ["algorithms", "heap trie hash table graph"],
+  ["search engines", "inverted index ranking"],
+  ["oddities", "octopus black holes sourdough"],
 ];
+const CURIOUS = ["octopus neurons", "write ahead log", "sourdough fermentation", "black holes", "bm25 ranking", "tcp handshake", "porter stemming"];
 
-const fade = (delay = 0) => ({
-  initial: { opacity: 0, y: 14 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, delay, ease: [0.2, 0.7, 0.2, 1] },
-});
-
-function LiveStats() {
+function IndexStatus() {
   const [stats, setStats] = useState(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     const ctrl = new AbortController();
     const load = () => api.stats(ctrl.signal).then((s) => { setStats(s); setFailed(false); }).catch((e) => e.name !== "AbortError" && setFailed(true));
     load();
-    const id = setInterval(load, 10000);
+    const id = setInterval(load, 15000);
     return () => { ctrl.abort(); clearInterval(id); };
   }, []);
 
-  const items = [
-    { label: "pages indexed", value: stats && fmtInt(stats.documents) },
-    { label: "unique terms", value: stats && fmtInt(stats.terms) },
-    { label: "domains", value: stats && fmtInt(stats.domains) },
-    { label: "avg query time", value: stats && fmtMs(stats.avg_latency_ms) },
-  ];
+  if (failed) return <span className="text-ink-3"><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--status-critical)" }} />Backend offline</span>;
+  if (!stats) return <span className="skeleton inline-block h-3 w-64 align-middle" />;
   return (
-    <div className="mx-auto mt-10 flex max-w-3xl flex-col items-center gap-3 text-sm sm:flex-row sm:flex-wrap sm:justify-center sm:gap-0">
-      <span className="inline-flex shrink-0 sm:mr-3 items-center gap-1.5 rounded-full border border-line bg-surface/70 px-2.5 py-1 text-xs font-medium text-ink-2 glass">
-        <span className="relative flex h-2 w-2">
-          {!failed && <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: "var(--status-good)" }} />}
-          <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: failed ? "var(--status-critical)" : "var(--status-good)" }} />
-        </span>
-        {failed ? "Backend offline" : STATIC ? "Index snapshot" : "Live index"}
-      </span>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:flex sm:gap-0 sm:divide-x sm:divide-line">
-        {items.map((it) => (
-          <span key={it.label} className="inline-flex items-baseline gap-1.5 whitespace-nowrap py-1 text-ink-3 sm:px-4">
-            {stats ? <span className="font-display text-base font-semibold tabular-nums text-ink">{it.value}</span> : <span className="skeleton inline-block h-4 w-10" />}
-            {it.label}
-          </span>
-        ))}
-      </div>
-    </div>
+    <span className="text-ink-3">
+      <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: "var(--status-good)" }} />
+      {STATIC ? "Snapshot of " : ""}{fmtInt(stats.documents)} pages · {fmtInt(stats.terms)} terms · {fmtInt(stats.domains)} {stats.domains === 1 ? "site" : "sites"}
+      {stats.avg_latency_ms != null && <> · {fmtMs(stats.avg_latency_ms)} average</>}
+    </span>
   );
 }
 
 export default function Home() {
   const navigate = useNavigate();
+  const [feeling, setFeeling] = useState(false);
   const go = (q) => navigate(`/search?q=${encodeURIComponent(q)}`);
 
+  useEffect(() => { document.title = "QuirkSearch"; }, []);
+
+  // "I'm feeling curious": straight to the best page for the query (or a random one).
+  const curious = async () => {
+    const input = document.querySelector("input[role=combobox]");
+    const q = input?.value.trim() || CURIOUS[Math.floor(Math.random() * CURIOUS.length)];
+    setFeeling(true);
+    try {
+      const res = await api.search(q, { pageSize: 1, autocorrect: getSettings().autocorrect });
+      if (res.results[0]) {
+        addHistory(q);
+        window.location.assign(res.results[0].url);
+        return;
+      }
+      go(q);
+    } catch {
+      go(q);
+    } finally {
+      setFeeling(false);
+    }
+  };
+
+  const button = "focus-ring rounded-full border border-line bg-surface px-5 py-2.5 text-[14px] text-ink transition hover:border-ink-3 hover:shadow-soft disabled:opacity-60";
+
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <Background />
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-        <div className="flex items-center gap-2 font-display text-base font-bold tracking-tight">
-          <LogoMark size={28} /> QuirkSearch
-        </div>
-        <nav className="flex items-center gap-1">
-          <button onClick={() => navigate("/dashboard")} className="focus-ring inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-ink-2 transition hover:bg-surface-2 hover:text-ink">
-            Dashboard <ArrowUpRight size={15} />
-          </button>
-          <ThemeToggle />
-        </nav>
+    <div className="flex flex-1 flex-col">
+      <header className="flex items-center justify-end gap-4 px-4 py-3 sm:px-6">
+        <Link to="/dashboard" className="focus-ring rounded text-sm text-ink-2 underline-offset-[6px] hover:text-ink hover:underline">Dashboard</Link>
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="focus-ring hidden rounded text-sm text-ink-2 underline-offset-[6px] hover:text-ink hover:underline sm:inline">Source</a>
+        <SettingsButton />
       </header>
 
-      <main className="relative z-10 mx-auto max-w-4xl px-4 pb-24 pt-10 text-center sm:px-6 sm:pt-20">
-        <motion.div {...fade(0)} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3.5 py-1.5 text-xs font-medium text-ink-2 glass">
-          <Sparkles size={13} className="text-brand" />
-          Own crawler · inverted index · BM25 ranking — no borrowed search APIs
-        </motion.div>
+      <main className="flex flex-1 flex-col items-center px-4 pb-16 pt-[11vh] sm:px-6">
+        <h1 className="flex items-start gap-2">
+          <Wordmark className="text-[64px] sm:text-[92px]" />
+          <LogoMark size={30} className="mt-1 text-brand sm:mt-2" />
+          <span className="sr-only">QuirkSearch</span>
+        </h1>
+        <p className="mt-4 font-read text-[17px] italic text-ink-2">Curiosity deserves better results.</p>
 
-        <motion.h1 {...fade(0.08)} className="mt-7 font-display text-[44px] font-extrabold leading-[1.02] tracking-[-0.035em] sm:text-7xl md:text-[84px]">
-          Curiosity deserves
-          <br />
-          <span className="font-serif text-[1.08em] font-normal italic tracking-[-0.01em] text-gradient">better results.</span>
-        </motion.h1>
-
-        <motion.p {...fade(0.16)} className="mx-auto mt-6 max-w-xl text-lg text-ink-2">
-          QuirkSearch crawls the web itself, builds its own index and ranks every answer with
-          maths you can inspect.
-        </motion.p>
-
-        <motion.div {...fade(0.24)} className="mx-auto mt-10 max-w-2xl text-left">
+        <div className="mt-9 w-full max-w-[600px]">
           <SearchBox size="lg" onSearch={go} autoFocus />
-        </motion.div>
+        </div>
 
-        <motion.div {...fade(0.32)} className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <span className="text-sm text-ink-3">Try</span>
-          {SUGGESTED.map((s) => (
-            <button
-              key={s}
-              onClick={() => go(s)}
-              className="focus-ring rounded-full border border-line bg-surface/70 px-3.5 py-1.5 text-sm text-ink-2 glass transition hover:-translate-y-0.5 hover:border-brand/40 hover:text-ink"
-            >
-              {s}
-            </button>
-          ))}
-        </motion.div>
+        <div className="mt-7 flex gap-3">
+          <button className={button} onClick={() => { const v = document.querySelector("input[role=combobox]")?.value.trim(); v && go(v); }}>
+            QuirkSearch
+          </button>
+          <button className={button} onClick={curious} disabled={feeling}>
+            {feeling ? "Wandering…" : "I'm feeling curious"}
+          </button>
+        </div>
 
-        <motion.div {...fade(0.4)}>
-          <LiveStats />
-        </motion.div>
-
-        <motion.section {...fade(0.5)} className="mt-20 text-left" aria-labelledby="topics-title">
-          <div className="flex items-end justify-between">
-            <h2 id="topics-title" className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-ink-3">
-              Popular topics
-            </h2>
-            <span className="hidden items-center gap-1.5 text-xs text-ink-3 sm:inline-flex">
-              <Timer size={13} /> Results in milliseconds
+        <p className="mt-10 max-w-[600px] text-center font-read text-[16px] leading-relaxed text-ink-2">
+          <span className="italic text-ink-3">Wander into </span>
+          {WANDER.map(([label, q], i) => (
+            <span key={label}>
+              {i > 0 && <span className="text-ink-3"> · </span>}
+              <button onClick={() => go(q)} className="result-title focus-ring rounded-sm underline-offset-4 hover:underline">{label}</button>
             </span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {TOPICS.map(({ title, icon: Icon, query, blurb }) => (
-              <button
-                key={title}
-                onClick={() => go(query)}
-                className="focus-ring group relative overflow-hidden rounded-2xl border border-line bg-surface/80 p-4 text-left glass transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lift"
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand/15 to-brand-2/15 text-brand-ink transition group-hover:scale-110">
-                  <Icon size={18} />
-                </span>
-                <div className="mt-3 font-display font-semibold">{title}</div>
-                <p className="mt-1 text-[13px] leading-snug text-ink-3">{blurb}</p>
-                <ArrowUpRight size={16} className="absolute right-3 top-3 text-ink-3 opacity-0 transition group-hover:opacity-100" />
-              </button>
-            ))}
-          </div>
-        </motion.section>
+          ))}
+        </p>
       </main>
 
-      <footer className="relative z-10 border-t border-line/70 py-6 text-center text-xs text-ink-3">
-        QuirkSearch · built from scratch with FastAPI, SQLite & React · <span className="font-serif italic">Curiosity deserves better results.</span>
+      <footer className="border-t border-line bg-surface-2/60 text-[13px]">
+        <div className="mx-auto flex max-w-[1180px] flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <IndexStatus />
+          <div className="flex gap-5 text-ink-3">
+            <span>Own crawler, own index, BM25 ranking</span>
+            <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="focus-ring rounded hover:text-ink hover:underline sm:hidden">Source</a>
+          </div>
+        </div>
       </footer>
     </div>
   );

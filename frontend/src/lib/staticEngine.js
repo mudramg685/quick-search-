@@ -108,23 +108,60 @@ const tokenize = (t) => normalize(t).match(/[\p{L}\p{N}]+/gu) || [];
 const indexable = (t) => !STOP.has(t) && ((t.length >= 2 && t.length <= 40) || (/^\d+$/.test(t) && t.length <= 40));
 const termOf = (word) => { const t = normalize(word).replace(/[^\p{L}\p{N}]/gu, ""); return t && indexable(t) ? stem(t) : null; };
 
+// A chunk is an (optionally +/-) "quoted phrase" or a run of non-space characters.
+const CHUNK = /([+-]?)"([^"]*)"?|(\S+)/g;
+
 function parseQuery(raw) {
+  const original = raw;
   let domain = null;
   const m = raw.match(/\bsite:(\S+)/i);
-  if (m) { domain = m[1].toLowerCase().replace(/\/+$/, ""); raw = raw.replace(/\bsite:\S+/gi, " "); }
-  const terms = [], required = new Set(), excluded = new Set(), words = [];
-  for (const chunk of raw.split(/\s+/).filter(Boolean)) {
-    const prefix = "+-".includes(chunk[0]) && chunk.length > 1 ? chunk[0] : "";
-    for (const tok of tokenize(prefix ? chunk.slice(1) : chunk)) {
+  if (m) { domain = m[1].toLowerCase().replace(/^\/+|\/+$/g, ""); raw = raw.replace(/\bsite:\S+/gi, " "); }
+  const terms = [], required = new Set(), excluded = new Set(), words = [], phrases = [];
+  for (const c of raw.matchAll(CHUNK)) {
+    let prefix, body, quoted;
+    if (c[3] !== undefined) {
+      const chunk = c[3];
+      prefix = "+-".includes(chunk[0]) && chunk.length > 1 ? chunk[0] : "";
+      body = prefix ? chunk.slice(1) : chunk;
+      quoted = false;
+    } else {
+      prefix = c[1]; body = c[2]; quoted = true;
+    }
+    const phrase = [];
+    for (const tok of tokenize(body)) {
       if (!indexable(tok)) continue;
       const t = stem(tok);
       if (prefix === "-") { excluded.add(t); continue; }
       words.push(tok);
-      if (prefix === "+") required.add(t);
+      phrase.push(t);
+      if (prefix === "+" || quoted) required.add(t);
       if (!terms.includes(t)) terms.push(t);
     }
+    if (quoted && phrase.length > 1) phrases.push(phrase);
   }
-  return { terms, required, excluded, domain, words };
+  return { raw: original, terms, required, excluded, domain, words, phrases };
+}
+
+// Ranking = BM25 × coverage, so pages containing every query word beat one-word repeats.
+const coverage = (matched, n) => (n ? (1 + matched) / (1 + n) : 1);
+const termSequence = (text) => tokenize(text).filter(indexable).map(stem);
+function containsPhrase(seq, phrase) {
+  outer: for (let i = 0; i + phrase.length <= seq.length; i++) {
+    for (let j = 0; j < phrase.length; j++) if (seq[i + j] !== phrase[j]) continue outer;
+    return true;
+  }
+  return false;
+}
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Swap misspelled words inside the raw query, keeping operators, quotes and site:.
+function replaceWords(raw, fixes) {
+  let out = raw;
+  for (const [wrong, right] of fixes) {
+    const next = out.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRe(wrong)}(?![\\p{L}\\p{N}_])`, "giu"), right);
+    if (next === out) return null;
+    out = next;
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ BM25 + heap Top-K
@@ -152,6 +189,7 @@ function topK(entries, k) {
 }
 
 // ------------------------------------------------------------------ snippets
+const SNIPPET_SCAN_CHARS = 25000; // same bounded prefix the server analyses (repository.py)
 function highlight(text, qset) {
   const segs = [];
   for (const part of text.split(/([\p{L}\p{N}_]+)/u)) {
@@ -224,7 +262,22 @@ export function createEngine(data) {
     return best ? best[2] : null;
   }
 
-  function search(raw, { page = 1, pageSize = 10, domain } = {}) {
+  const seqCache = new Map(); // doc -> [title terms, content terms], built on the first phrase query
+  const sequences = (d) => {
+    let s = seqCache.get(d);
+    if (!s) { s = [termSequence(docs[d].title), termSequence(docs[d].content)]; seqCache.set(d, s); }
+    return s;
+  };
+
+  function spelling(q) {
+    if (!q.words.length) return null;
+    const fixes = new Map();
+    for (const w of q.words) if (!fixes.has(w)) { const f = correct(w); if (f) fixes.set(w, f); }
+    if (!fixes.size) return null;
+    return replaceWords(q.raw, fixes) || q.words.map((w) => fixes.get(w) || w).join(" ");
+  }
+
+  function search(raw, { page = 1, pageSize = 10, domain, autocorrect = true } = {}) {
     const t0 = performance.now();
     const q = parseQuery(raw);
     domain = (domain || q.domain || "").toLowerCase() || null;
@@ -237,7 +290,10 @@ export function createEngine(data) {
       }
     }
     const has = (t, d) => post.get(t)?.has(d);
-    let cand = [...scores].filter(([d]) => [...q.required].every((t) => has(t, d)) && ![...q.excluded].some((t) => has(t, d)));
+    let cand = [...scores]
+      .filter(([d]) => [...q.required].every((t) => has(t, d)) && ![...q.excluded].some((t) => has(t, d)))
+      .map(([d, s]) => [d, s * coverage(matched.get(d), q.terms.length)]);
+    if (q.phrases.length) cand = cand.filter(([d]) => q.phrases.every((ph) => sequences(d).some((seq) => containsPhrase(seq, ph))));
     const facets = new Map();
     cand.forEach(([d]) => facets.set(docs[d].domain, (facets.get(docs[d].domain) || 0) + 1));
     if (domain) cand = cand.filter(([d]) => docs[d].domain === domain || docs[d].domain.endsWith("." + domain));
@@ -250,15 +306,19 @@ export function createEngine(data) {
       q.terms.forEach((t) => { if (has(t, d)) term_scores[t] = +termScore(post.get(t).get(d), doc.len, avgdl, idfs[t], k1, b).toFixed(4); });
       return {
         rank: (page - 1) * pageSize + i + 1, doc_id: doc.id, url: doc.url, domain: doc.domain, title: doc.title,
-        title_segments: highlight(doc.title, qset), snippet: makeSnippet(doc.content, doc.description, qset),
+        title_segments: highlight(doc.title, qset), snippet: makeSnippet(doc.content.slice(0, SNIPPET_SCAN_CHARS), doc.description, qset),
         description: doc.description, score: +score.toFixed(4), relevance: +(score / max).toFixed(4),
-        matched_terms: matched.get(d), query_terms: q.terms.length, term_scores, fetched_at: doc.fetched_at,
+        matched_terms: matched.get(d), query_terms: q.terms.length,
+        coverage: +coverage(matched.get(d), q.terms.length).toFixed(4), term_scores, fetched_at: doc.fetched_at,
       };
     });
-    let didYouMean = null;
-    if (!cand.length && q.words.length) {
-      const fixed = q.words.map((w) => correct(w) || w);
-      if (fixed.some((w, i) => w !== q.words[i])) didYouMean = fixed.join(" ");
+    // unknown words get a suggestion even when other words matched ("netwrk protocol")
+    const didYouMean = spelling(q);
+    if (didYouMean && autocorrect && !cand.length) {
+      const fixed = search(didYouMean, { page, pageSize, domain, autocorrect: false });
+      if (fixed.total) {
+        return { ...fixed, query: raw, corrected_query: didYouMean, did_you_mean: null, took_ms: +(performance.now() - t0).toFixed(3) };
+      }
     }
     const normalized = q.words.join(" ");
     if (cand.length && page === 1 && normalized) queryLog.set(normalized, (queryLog.get(normalized) || 0) + 1);
@@ -266,7 +326,7 @@ export function createEngine(data) {
       query: raw, normalized_query: normalized, terms: q.terms, excluded: [...q.excluded], domain,
       total: cand.length, page, page_size: pageSize, took_ms: +(performance.now() - t0).toFixed(3),
       results, facets: [...facets].sort((a, c) => c[1] - a[1]).slice(0, 10).map(([domain, count]) => ({ domain, count })),
-      did_you_mean: didYouMean, index_size: n,
+      did_you_mean: didYouMean, corrected_query: null, phrases: q.phrases.map((p) => p.join(" ")), index_size: n,
     };
   }
 

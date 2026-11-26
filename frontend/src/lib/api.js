@@ -56,6 +56,11 @@ function staticData() {
   ]).then(([data, mod]) => ({ data, engine: mod.createEngine(data) }));
   return enginePromise;
 }
+// The bundled corpus was crawled from the local backend (127.0.0.1:8000); on the hosted demo
+// those pages are served next to the app, so show that host instead of a loopback address.
+const LOCAL_CORPUS = /^http:\/\/127\.0\.0\.1:8000\/corpus\//;
+export const displayDomain = (d) => (STATIC && d === "127.0.0.1" ? window.location.host : d);
+
 const backendOnly = () =>
   Promise.reject(new ApiError("Crawling needs the Python backend. This hosted demo searches a snapshot of the index; run the project locally to crawl.", 501));
 
@@ -64,7 +69,7 @@ const staticApi = {
     const res = engine.search(q, opts);
     // Corpus pages were crawled from the local backend; the static site hosts copies of them.
     const corpusBase = new URL(`${import.meta.env.BASE_URL}corpus/`, window.location.href).href;
-    res.results.forEach((r) => { r.url = r.url.replace(/^http:\/\/127\.0\.0\.1:8000\/corpus\//, corpusBase); });
+    res.results.forEach((r) => { r.url = r.url.replace(LOCAL_CORPUS, corpusBase); r.domain = displayDomain(r.domain); });
     return res;
   }),
   suggestions: (q) => staticData().then(({ engine }) => ({ query: q, suggestions: engine.suggest(q) })),
@@ -85,8 +90,8 @@ const staticApi = {
 };
 
 const serverApi = {
-  search: (q, { page = 1, pageSize = 10, domain } = {}, signal) =>
-    request("/api/search", { params: { q, page, page_size: pageSize, domain }, signal }),
+  search: (q, { page = 1, pageSize = 10, domain, autocorrect = true } = {}, signal) =>
+    request("/api/search", { params: { q, page, page_size: pageSize, domain, autocorrect: autocorrect ? undefined : "false" }, signal }),
   suggestions: (q, signal) => request("/api/suggestions", { params: { q, limit: 7 }, signal }),
   stats: (signal) => request("/api/stats", { signal }),
   health: (signal) => request("/api/health", { signal }),

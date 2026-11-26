@@ -1,51 +1,53 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { BarChart3, Moon, Search, Sun } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import clsx from "clsx";
 import { Logo } from "./Logo";
-import { useTheme } from "../lib/theme";
+import { SettingsPanel } from "./SettingsPanel";
 
-export function ThemeToggle() {
-  const [dark, toggle] = useTheme();
+export function SettingsButton({ className }) {
+  const [open, setOpen] = useState(false);
   return (
-    <button
-      onClick={toggle}
-      className="focus-ring grid h-9 w-9 place-items-center rounded-xl text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      title={dark ? "Light theme" : "Dark theme"}
-    >
-      {dark ? <Sun size={18} /> : <Moon size={18} />}
-    </button>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className={clsx("focus-ring grid h-10 w-10 place-items-center rounded-full text-ink-2 transition hover:bg-surface-2 hover:text-ink", className)}
+        aria-label="Settings"
+        title="Settings"
+      >
+        <Settings2 size={19} strokeWidth={1.75} />
+      </button>
+      <SettingsPanel open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 
-function NavItem({ to, icon: Icon, children }) {
+export function NavText({ to, children }) {
   return (
     <NavLink
       to={to}
       end
       className={({ isActive }) =>
         clsx(
-          "focus-ring inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition",
-          isActive ? "bg-surface-2 text-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+          "focus-ring rounded px-1 text-sm underline-offset-[6px] transition",
+          isActive ? "text-ink underline decoration-brand decoration-2" : "text-ink-2 hover:text-ink hover:underline decoration-line",
         )
       }
     >
-      <Icon size={16} />
-      <span className="hidden sm:inline">{children}</span>
+      {children}
     </NavLink>
   );
 }
 
-export function TopBar({ children, showLogo = true }) {
+export function TopBar({ children }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-line/70 glass">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 sm:gap-5 sm:px-6">
-        {showLogo && <Logo className="shrink-0" compact />}
+    <header className="sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-4 py-3 sm:gap-8 sm:px-6">
+        <Logo className="shrink-0" compact />
         <div className="min-w-0 flex-1">{children}</div>
-        <nav className="flex shrink-0 items-center gap-1">
-          <span className="hidden sm:block"><NavItem to="/" icon={Search}>Search</NavItem></span>
-          <NavItem to="/dashboard" icon={BarChart3}>Dashboard</NavItem>
-          <ThemeToggle />
+        <nav className="flex shrink-0 items-center gap-3">
+          <span className="hidden sm:inline"><NavText to="/dashboard">Dashboard</NavText></span>
+          <SettingsButton />
         </nav>
       </div>
     </header>

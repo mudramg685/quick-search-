@@ -1,47 +1,60 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
-import { Globe2, Info, Loader2, Microscope, SlidersHorizontal, Sparkles, X, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import clsx from "clsx";
 import { TopBar } from "../components/TopBar";
 import { SearchBox } from "../components/SearchBox";
 import { ResultCard } from "../components/ResultCard";
 import { EmptyState, ErrorState, ResultSkeleton } from "../components/States";
-import { api } from "../lib/api";
+import { api, displayDomain } from "../lib/api";
 import { fmtInt, fmtMs } from "../lib/format";
+import { addHistory, useSettings } from "../lib/settings";
 
-const PAGE_SIZE = 10;
-const RELEVANCE_LEVELS = [
-  { label: "All", value: 0 },
-  { label: "≥ 25%", value: 0.25 },
-  { label: "≥ 50%", value: 0.5 },
-  { label: "≥ 75%", value: 0.75 },
-];
-
-function Card({ title, icon: Icon, children }) {
+function SideBlock({ title, children }) {
   return (
-    <section className="rounded-2xl border border-line bg-surface p-4">
-      <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-ink-3">
-        <Icon size={14} /> {title}
-      </h3>
-      <div className="mt-3">{children}</div>
+    <section className="border-t border-line pt-4 first:border-t-0 first:pt-0">
+      <h3 className="smallcaps text-[13px] font-medium text-ink-3">{title}</h3>
+      <div className="mt-2.5">{children}</div>
     </section>
   );
 }
 
+function Pagination({ page, pages, onPage }) {
+  if (pages <= 1) return null;
+  const from = Math.max(1, Math.min(page - 4, pages - 9));
+  const nums = Array.from({ length: Math.min(10, pages) }, (_, i) => from + i);
+  const cell = "focus-ring grid h-10 min-w-10 place-items-center rounded-full px-2 text-[15px] transition";
+  return (
+    <nav aria-label="Result pages" className="mt-12 flex max-w-[640px] items-center justify-center gap-1 font-read">
+      <button onClick={() => onPage(page - 1)} disabled={page === 1} className={clsx(cell, "gap-1 pr-3 text-ink-2 hover:text-ink disabled:invisible")} aria-label="Previous page">
+        <span className="inline-flex items-center gap-1"><ChevronLeft size={16} /> Previous</span>
+      </button>
+      {nums.map((n) => (
+        <button key={n} onClick={() => onPage(n)} aria-current={n === page ? "page" : undefined}
+          className={clsx(cell, n === page ? "bg-ink text-bg" : "result-title hover:bg-surface-2")}>
+          {n}
+        </button>
+      ))}
+      <button onClick={() => onPage(page + 1)} disabled={page === pages} className={clsx(cell, "pl-3 text-ink-2 hover:text-ink disabled:invisible")} aria-label="Next page">
+        <span className="inline-flex items-center gap-1">Next <ChevronRight size={16} /></span>
+      </button>
+    </nav>
+  );
+}
+
 export default function Results() {
+  const settings = useSettings();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const q = params.get("q") || "";
   const domain = params.get("domain") || "";
+  const exact = params.get("exact") === "1";
+  const page = Math.max(1, Number(params.get("p")) || 1);
+  const pageSize = settings.pageSize;
 
-  const [data, setData] = useState(null); // first page response (summary, facets…)
-  const [results, setResults] = useState([]);
-  const [page, setPage] = useState(1);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
-  const [minRel, setMinRel] = useState(0);
   const [related, setRelated] = useState([]);
   const reqId = useRef(0);
 
@@ -53,103 +66,93 @@ export default function Results() {
     const id = ++reqId.current; // ignore responses from superseded searches
     setLoading(true);
     setError(null);
-    setPage(1);
     api
-      .search(q, { page: 1, pageSize: PAGE_SIZE, domain: domain || undefined })
-      .then((d) => {
-        if (id !== reqId.current) return;
-        setData(d);
-        setResults(d.results);
-      })
+      .search(q, { page, pageSize, domain: domain || undefined, autocorrect: settings.autocorrect && !exact })
+      .then((d) => id === reqId.current && setData(d))
       .catch((e) => id === reqId.current && setError(e))
       .finally(() => id === reqId.current && setLoading(false));
-    api.suggestions(q.split(" ").slice(0, 2).join(" ")).then((d) => setRelated(d.suggestions.filter((s) => s !== q.toLowerCase()).slice(0, 5))).catch(() => setRelated([]));
-  }, [q, domain, navigate]);
+  }, [q, page, pageSize, domain, exact, settings.autocorrect, navigate]);
 
   useEffect(() => {
     runSearch();
-    document.title = q ? `${q} – QuirkSearch` : "QuirkSearch";
     window.scrollTo({ top: 0 });
-  }, [runSearch, q]);
+  }, [runSearch]);
 
-  const loadMore = () => {
-    const next = page + 1;
-    setLoadingMore(true);
-    api
-      .search(q, { page: next, pageSize: PAGE_SIZE, domain: domain || undefined })
-      .then((d) => {
-        setResults((r) => [...r, ...d.results]);
-        setPage(next);
-      })
-      .catch(setError)
-      .finally(() => setLoadingMore(false));
-  };
+  useEffect(() => {
+    document.title = q ? `${q} – QuirkSearch` : "QuirkSearch";
+    if (q) addHistory(q);
+    const base = q.replace(/["+-]|site:\S+/g, " ").trim().split(/\s+/).slice(0, 2).join(" ");
+    if (!base) return setRelated([]);
+    api.suggestions(base).then((d) => setRelated(d.suggestions.filter((s) => s !== q.toLowerCase()).slice(0, 8))).catch(() => setRelated([]));
+  }, [q]);
 
-  const go = (query) => setParams({ q: query });
-  const setDomain = (d) => setParams(d ? { q, domain: d } : { q });
+  const go = (query, extra = {}) => setParams({ q: query, ...extra });
+  const setDomain = (d) => setParams({ q, ...(d ? { domain: d } : {}) });
+  const setPage = (p) => setParams({ q, ...(domain ? { domain } : {}), ...(exact ? { exact: "1" } : {}), ...(p > 1 ? { p: String(p) } : {}) });
 
-  const visible = useMemo(() => results.filter((r) => r.relevance >= minRel), [results, minRel]);
-  const hidden = results.length - visible.length;
-  const hasMore = data && results.length < data.total;
+  const pages = data ? Math.min(100, Math.ceil(data.total / pageSize)) : 0;
+  const shownQuery = data?.corrected_query || q;
 
   return (
     <div className="min-h-screen">
       <TopBar>
-        <div className="max-w-2xl">
-          <SearchBox initial={q} onSearch={go} />
+        <div className="max-w-[600px]">
+          <SearchBox initial={q} onSearch={(v) => go(v)} />
         </div>
       </TopBar>
 
-      <main className="mx-auto grid max-w-6xl gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_290px]">
-        <div className="min-w-0">
-          {/* summary + filters */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-ink-2" aria-live="polite">
-              {loading ? (
-                <span className="skeleton inline-block h-4 w-56" />
-              ) : data ? (
-                <>
-                  <span className="font-semibold text-ink">{fmtInt(data.total)}</span> {data.total === 1 ? "result" : "results"}
-                  <span className="mx-1.5 text-line">•</span>
-                  <span className="inline-flex items-center gap-1"><Zap size={13} className="text-brand" />{fmtMs(data.took_ms)}</span>
-                  <span className="mx-1.5 text-line">•</span>
-                  searched {fmtInt(data.index_size)} pages
-                </>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-1 rounded-xl border border-line bg-surface p-1" role="group" aria-label="Minimum relevance">
-              <SlidersHorizontal size={14} className="mx-1.5 text-ink-3" />
-              {RELEVANCE_LEVELS.map((l) => (
-                <button
-                  key={l.value}
-                  onClick={() => setMinRel(l.value)}
-                  aria-pressed={minRel === l.value}
-                  className={clsx(
-                    "focus-ring rounded-lg px-2.5 py-1 text-xs font-medium transition",
-                    minRel === l.value ? "bg-ink text-bg" : "text-ink-2 hover:bg-surface-2",
-                  )}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* tools row */}
+      <div className="border-b border-line">
+        <div className="mx-auto flex max-w-[1180px] items-center gap-5 overflow-x-auto px-4 text-sm sm:px-6 sm:pl-[calc(1.5rem+178px)]">
+          <span className="border-b-2 border-brand py-2.5 text-ink">All results</span>
+          <label className="flex shrink-0 items-center gap-1.5 py-2.5 text-ink-2">
+            <span className="text-ink-3">Site</span>
+            <select value={domain} onChange={(e) => setDomain(e.target.value)} aria-label="Filter by site"
+              className="focus-ring max-w-[12rem] rounded bg-transparent text-ink-2 hover:text-ink focus:outline-none">
+              <option value="">Any site</option>
+              {(data?.facets || []).map((f) => <option key={f.domain} value={f.domain}>{displayDomain(f.domain)} ({f.count})</option>)}
+              {domain && !(data?.facets || []).some((f) => f.domain === domain) && <option value={domain}>{domain}</option>}
+            </select>
+          </label>
+        </div>
+      </div>
 
-          {domain && (
-            <div className="mt-3">
-              <button onClick={() => setDomain("")} className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-sm font-medium text-brand-ink transition hover:bg-brand/15">
-                <Globe2 size={14} /> {domain} <X size={14} />
-              </button>
+      <main className="mx-auto grid max-w-[1180px] gap-x-16 gap-y-10 px-4 pb-20 pt-4 sm:px-6 sm:pl-[calc(1.5rem+178px)] lg:grid-cols-[minmax(0,640px)_minmax(0,300px)]">
+        <div className="min-w-0">
+          <p className="h-5 text-[13px] text-ink-3" aria-live="polite">
+            {loading ? <span className="skeleton inline-block h-3 w-52 align-middle" /> : data && data.total > 0 ? (
+              <>
+                {page > 1 ? <>Page {page} of about </> : <>About </>}{fmtInt(data.total)} {data.total === 1 ? "result" : "results"} ({fmtMs(data.took_ms)})
+                {data.domain && <> on <span className="text-ink-2">{displayDomain(data.domain)}</span></>}
+              </>
+            ) : null}
+          </p>
+
+          {!loading && data?.corrected_query && (
+            <div className="mt-3 font-read text-[17px] leading-relaxed">
+              <p className="text-ink-2">
+                Showing results for{" "}
+                <button onClick={() => go(data.corrected_query)} className="result-title focus-ring rounded-sm font-semibold italic hover:underline">
+                  {data.corrected_query}
+                </button>
+              </p>
+              <p className="text-[14px] text-ink-3">
+                Search instead for{" "}
+                <button onClick={() => go(q, { exact: "1" })} className="result-title focus-ring rounded-sm hover:underline">{q}</button>
+              </p>
             </div>
           )}
 
-          {data?.did_you_mean && data.total > 0 && (
-            <p className="mt-3 text-sm text-ink-2">
-              Did you mean <button onClick={() => go(data.did_you_mean)} className="font-semibold text-brand-ink underline underline-offset-4">{data.did_you_mean}</button>?
+          {!loading && data?.did_you_mean && data.total > 0 && (
+            <p className="mt-3 font-read text-[17px] text-ink-2">
+              Did you mean:{" "}
+              <button onClick={() => go(data.did_you_mean)} className="result-title focus-ring rounded-sm font-semibold italic hover:underline">
+                {data.did_you_mean}
+              </button>
             </p>
           )}
 
-          <div className="mt-5 space-y-3">
+          <div className="mt-6 space-y-8">
             {loading ? (
               Array.from({ length: 4 }, (_, i) => <ResultSkeleton key={i} />)
             ) : error ? (
@@ -157,112 +160,72 @@ export default function Results() {
             ) : data && data.total === 0 ? (
               <EmptyState query={q} didYouMean={data.did_you_mean} onSearch={go} suggestions={["bm25", "inverted index", "tcp", "sqlite"]} />
             ) : (
-              <>
-                <AnimatePresence initial={false}>
-                  {visible.map((r, i) => (
-                    <ResultCard key={r.doc_id} result={r} index={i % PAGE_SIZE} />
-                  ))}
-                </AnimatePresence>
-                {hidden > 0 && (
-                  <p className="rounded-xl border border-dashed border-line px-4 py-3 text-center text-sm text-ink-3">
-                    {hidden} loaded {hidden === 1 ? "result is" : "results are"} below the {Math.round(minRel * 100)}% relevance threshold.{" "}
-                    <button onClick={() => setMinRel(0)} className="font-medium text-brand-ink underline underline-offset-4">Show all</button>
-                  </p>
-                )}
-                {hasMore && (
-                  <div className="pt-3 text-center">
-                    <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
-                      className="focus-ring inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-5 py-2.5 text-sm font-semibold shadow-soft transition hover:-translate-y-0.5 hover:border-brand/40 disabled:opacity-60"
-                    >
-                      {loadingMore ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} className="text-brand" />}
-                      {loadingMore ? "Loading…" : `Load more (${fmtInt(data.total - results.length)} left)`}
-                    </button>
-                  </div>
-                )}
-                {!hasMore && results.length > 0 && (
-                  <p className="pt-4 text-center text-xs text-ink-3">That's every matching page in the index.</p>
-                )}
-              </>
+              data?.results.map((r) => <ResultCard key={r.doc_id} result={r} />)
             )}
           </div>
-        </div>
 
-        {/* sidebar */}
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <Card title="Domains" icon={Globe2}>
-            {loading ? (
-              <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-7" />)}</div>
-            ) : data?.facets?.length ? (
-              <ul className="space-y-1">
-                {data.facets.map((f) => {
-                  const active = f.domain === (data.domain || "");
-                  const max = data.facets[0].count;
-                  return (
-                    <li key={f.domain}>
-                      <button
-                        onClick={() => setDomain(active ? "" : f.domain)}
-                        aria-pressed={active}
-                        className={clsx(
-                          "focus-ring relative flex w-full items-center justify-between overflow-hidden rounded-lg px-2.5 py-1.5 text-left text-sm transition",
-                          active ? "bg-brand/10 font-semibold text-brand-ink" : "text-ink-2 hover:bg-surface-2",
-                        )}
-                      >
-                        <span className="absolute inset-y-0 left-0 bg-surface-2" style={{ width: `${(f.count / max) * 100}%`, opacity: active ? 0 : 0.6 }} aria-hidden="true" />
-                        <span className="relative truncate">{f.domain}</span>
-                        <span className="relative ml-2 font-mono text-xs tabular-nums">{f.count}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="text-sm text-ink-3">No domains to filter.</p>
-            )}
-          </Card>
-
-          <Card title="Query analysis" icon={Microscope}>
-            {data ? (
-              <>
-                <p className="text-xs text-ink-3">After tokenizing, removing stop words and Porter stemming:</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {data.terms.length ? data.terms.map((t) => (
-                    <code key={t} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-ink">{t}</code>
-                  )) : <span className="text-sm text-ink-3">only stop words</span>}
-                  {data.excluded.map((t) => (
-                    <code key={t} className="rounded-md bg-red-500/10 px-2 py-0.5 font-mono text-xs text-red-600 line-through dark:text-red-400">{t}</code>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs leading-relaxed text-ink-3">
-                  Tip: use <code className="font-mono text-ink-2">+term</code> to require, <code className="font-mono text-ink-2">-term</code> to exclude,
-                  <code className="font-mono text-ink-2"> site:domain</code> to restrict.
-                </p>
-              </>
-            ) : <div className="skeleton h-12" />}
-          </Card>
-
-          {related.length > 0 && (
-            <Card title="Related searches" icon={Sparkles}>
-              <div className="flex flex-wrap gap-1.5">
+          {!loading && !error && data?.total > 0 && related.length > 0 && page === 1 && (
+            <section className="mt-14 max-w-[640px]">
+              <h2 className="font-display text-[26px] leading-none">Related searches</h2>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 {related.map((s) => (
-                  <button key={s} onClick={() => go(s)} className="focus-ring rounded-full border border-line px-3 py-1 text-sm text-ink-2 transition hover:border-brand/40 hover:text-ink">
-                    {s}
+                  <button key={s} onClick={() => go(s)}
+                    className="focus-ring flex items-center gap-3 rounded-full bg-surface-2/70 px-4 py-2.5 text-left text-[15px] text-ink transition hover:bg-surface-2">
+                    <Search size={15} className="shrink-0 text-ink-3" />
+                    <span className="truncate">{s}</span>
                   </button>
                 ))}
               </div>
-            </Card>
+            </section>
           )}
 
-          <Card title="How ranking works" icon={Info}>
-            <p className="text-[13px] leading-relaxed text-ink-2">
-              Each page is scored with <strong className="text-ink">BM25</strong>: rare terms weigh more (IDF), repeated
-              terms help with diminishing returns, and long pages are length-normalized. The top {PAGE_SIZE} are picked with a min-heap.
+          {!loading && !error && <Pagination page={page} pages={pages} onPage={setPage} />}
+        </div>
+
+        {/* margin notes */}
+        <aside className="hidden space-y-5 self-start pt-11 lg:sticky lg:top-24 lg:block">
+          <SideBlock title="How we read your query">
+            {data ? (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {data.terms.length ? data.terms.map((t) => (
+                    <code key={t} className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-ink">{t}</code>
+                  )) : <span className="text-sm text-ink-3">only stop words</span>}
+                  {data.excluded.map((t) => (
+                    <code key={t} className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-ink-3 line-through">{t}</code>
+                  ))}
+                </div>
+                {data.phrases?.length > 0 && (
+                  <p className="mt-2 text-xs text-ink-3">Exact phrase: {data.phrases.map((p) => <span key={p} className="font-mono text-ink-2">"{p}" </span>)}</p>
+                )}
+                <p className="mt-3 font-read text-[14px] leading-relaxed text-ink-2">
+                  Lower-cased, stop words removed, each word reduced to its stem by the Porter algorithm
+                  {data.corrected_query ? <>; spelling corrected to <em>{shownQuery}</em></> : ""}.
+                </p>
+              </>
+            ) : <div className="skeleton h-12" />}
+          </SideBlock>
+
+          <SideBlock title="Search like an editor">
+            <dl className="space-y-1.5 text-[13px] text-ink-2">
+              {[['"write ahead log"', "exact phrase"], ["+heap", "must contain"], ["-python", "leave out"], ["site:docs.python.org", "one site only"]].map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-3">
+                  <dt className="font-mono text-xs text-ink">{k}</dt>
+                  <dd className="text-ink-3">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </SideBlock>
+
+          <SideBlock title="How ranking works">
+            <p className="font-read text-[14px] leading-relaxed text-ink-2">
+              Each page is scored with <em>BM25</em>: rare words weigh more, repeats help with diminishing returns, long pages are
+              length-normalised. The sum is multiplied by how much of your query the page covers.
             </p>
-            <div className="mt-3 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 font-mono text-[11px] leading-relaxed text-ink-2">
-              Σ IDF(t) · tf·(k₁+1) / (tf + k₁·(1−b+b·|d|/avgdl))
-            </div>
-          </Card>
+            <p className="mt-2 font-mono text-[11px] leading-relaxed text-ink-3">
+              Σ IDF·tf(k₁+1) / (tf+k₁(1−b+b·|d|/avgdl))<br />× (1 + matched) / (1 + query words)
+            </p>
+          </SideBlock>
         </aside>
       </main>
     </div>
